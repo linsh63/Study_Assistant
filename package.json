@@ -1,0 +1,22 @@
+{
+  "name": "ai-code",
+  "version": "1.0.0",
+  "description": "---\r title: ai-code\r emoji: 🐳\r colorFrom: blue\r colorTo: blue\r sdk: static\r pinned: false\r tags:\r   - deepsite\r ---",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://huggingface.co/spaces/linsh63/ai-code"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  }
+}

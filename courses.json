@@ -1,0 +1,41 @@
+[
+  {
+    "id": 1,
+    "name": "数据结构",
+    "code": "CS201",
+    "teacher": "张教授",
+    "weekDay": 1,
+    "startTime": "08:00",
+    "endTime": "09:40",
+    "location": "教学楼A-301",
+    "type": "lecture",
+    "color": "#4a6fa5",
+    "note": "带课本和笔记本"
+  },
+  {
+    "id": 2,
+    "name": "计算机组成原理",
+    "code": "",
+    "teacher": "陈教授",
+    "weekDay": 2,
+    "type": "lecture",
+    "startTime": "08:00",
+    "endTime": "08:45",
+    "location": "D402",
+    "color": "#b5ea8c",
+    "note": ""
+  },
+  {
+    "id": 3,
+    "name": "计算机组成原理",
+    "code": "",
+    "teacher": "陈教授",
+    "weekDay": 2,
+    "type": "lecture",
+    "startTime": "17:01",
+    "endTime": "18:01",
+    "location": "D402",
+    "color": "#4a6fa5",
+    "note": ""
+  }
+]
