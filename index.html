@@ -1,47 +1,811 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>My app</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta charset="utf-8">
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能课程表管理系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-      body {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100dvh;
-        font-family: "Arial", sans-serif;
-        text-align: center;
-      }
-      .arrow {
-        position: absolute;
-        bottom: 32px;
-        left: 0px;
-        width: 100px;
-        transform: rotate(30deg);
-      }
-      h1 {
-        font-size: 50px;
-      }
-      h1 span {
-        color: #acacac;
-        font-size: 32px;
-      }
-      @media screen and (max-width: 640px) {
-        .arrow {
-          top: 12px;
-          left: 56px;
-          transform: rotate(180deg);
+        :root {
+            --primary-color: #4a6fa5;
+            --secondary-color: #6c8fc7;
+            --accent-color: #ff7e5f;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
-      }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background-color: white;
+            box-shadow: var(--box-shadow);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo i {
+            font-size: 28px;
+            color: var(--primary-color);
+        }
+
+        .logo h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background-color: var(--success-color);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: #218838;
+            transform: translateY(-2px);
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-outline:hover {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 30px;
+        }
+
+        .sidebar {
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 20px;
+            height: fit-content;
+        }
+
+        .sidebar h2 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .filter-group {
+            margin-bottom: 20px;
+        }
+
+        .filter-group h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: var(--dark-color);
+        }
+
+        .filter-options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .filter-option input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+        }
+
+        .filter-option label {
+            cursor: pointer;
+            color: #555;
+        }
+
+        .filter-option:hover label {
+            color: var(--primary-color);
+        }
+
+        .content {
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 20px;
+        }
+
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .content-header h2 {
+            font-size: 22px;
+            color: var(--primary-color);
+        }
+
+        .search-bar {
+            display: flex;
+            align-items: center;
+            background-color: #f5f7fa;
+            border-radius: var(--border-radius);
+            padding: 8px 15px;
+            flex: 0 0 300px;
+        }
+
+        .search-bar input {
+            border: none;
+            background: transparent;
+            padding: 5px;
+            width: 100%;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .search-bar i {
+            color: #777;
+            margin-right: 10px;
+        }
+
+        .schedule-view {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .view-option {
+            padding: 8px 16px;
+            background-color: #f5f7fa;
+            border-radius: var(--border-radius);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .view-option.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .view-option:hover:not(.active) {
+            background-color: #e9ecef;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background-color: #f5f7fa;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .edit-btn {
+            background-color: rgba(255, 193, 7, 0.2);
+            color: var(--warning-color);
+        }
+
+        .edit-btn:hover {
+            background-color: var(--warning-color);
+            color: white;
+        }
+
+        .delete-btn {
+            background-color: rgba(220, 53, 69, 0.2);
+            color: var(--danger-color);
+        }
+
+        .delete-btn:hover {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .course-color {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        .page-btn {
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            cursor: pointer;
+            background-color: #f5f7fa;
+            transition: all 0.3s ease;
+        }
+
+        .page-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .page-btn:hover:not(.active) {
+            background-color: #e9ecef;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            width: 500px;
+            max-width: 90%;
+            padding: 25px;
+            animation: modalFadeIn 0.3s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .modal-header h3 {
+            font-size: 20px;
+            color: var(--primary-color);
+        }
+
+        .close-btn {
+            font-size: 24px;
+            cursor: pointer;
+            color: #777;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background-color: #f5f7fa;
+            color: var(--danger-color);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: var(--border-radius);
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(74, 111, 165, 0.2);
+            outline: none;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .color-picker {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .color-option {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .color-option.selected {
+            border-color: var(--dark-color);
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #333;
+            color: white;
+            padding: 15px 25px;
+            border-radius: var(--border-radius);
+            z-index: 1100;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: var(--box-shadow);
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .toast i {
+            font-size: 20px;
+        }
+
+        .toast.success {
+            background-color: var(--success-color);
+        }
+
+        .toast.error {
+            background-color: var(--danger-color);
+        }
+
+        .toast.warning {
+            background-color: var(--warning-color);
+            color: var(--dark-color);
+        }
+
+        /* Responsive styles */
+        @media (max-width: 992px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                order: 2;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .content-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            
+            .search-bar {
+                width: 100%;
+            }
+            
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
+        }
     </style>
-  </head>
-  <body>
-    <h1>
-      <span>I'm ready to work,</span><br />
-      Ask me anything.
-    </h1>
-    <img src="https://enzostvs-deepsite.hf.space/arrow.svg" class="arrow" />
-    <script></script>
-  <p style="border-radius: 8px; text-align: center; font-size: 12px; color: #fff; margin-top: 16px;position: fixed; left: 8px; bottom: 8px; z-index: 10; background: rgba(0, 0, 0, 0.8); padding: 4px 8px;">Made with <a href="https://enzostvs-deepsite.hf.space" style="color: #fff;" target="_blank" >DeepSite</a> <img src="https://enzostvs-deepsite.hf.space/logo.svg" alt="DeepSite Logo" style="width: 16px; height: 16px; vertical-align: middle;"></p></body>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <i class="fas fa-calendar-alt"></i>
+                <h1>智能课程表管理系统</h1>
+            </div>
+            <div class="user-actions">
+                <button class="btn btn-outline" id="exportBtn">
+                    <i class="fas fa-file-export"></i> 导出
+                </button>
+                <button class="btn btn-outline" id="importBtn">
+                    <i class="fas fa-file-import"></i> 导入
+                </button>
+                <button class="btn btn-primary" id="addCourseBtn">
+                    <i class="fas fa-plus"></i> 添加课程
+                </button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <h2>筛选与统计</h2>
+                
+                <div class="filter-group">
+                    <h3>星期</h3>
+                    <div class="filter-options">
+                        <div class="filter-option">
+                            <input type="checkbox" id="monday" checked>
+                            <label for="monday">星期一</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="tuesday" checked>
+                            <label for="tuesday">星期二</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="wednesday" checked>
+                            <label for="wednesday">星期三</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="thursday" checked>
+                            <label for="thursday">星期四</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="friday" checked>
+                            <label for="friday">星期五</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="saturday">
+                            <label for="saturday">星期六</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="sunday">
+                            <label for="sunday">星期日</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="filter-group">
+                    <h3>课程类型</h3>
+                    <div class="filter-options">
+                        <div class="filter-option">
+                            <input type="checkbox" id="lecture" checked>
+                            <label for="lecture">讲座</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="seminar" checked>
+                            <label for="seminar">研讨</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="lab" checked>
+                            <label for="lab">实验</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="exercise" checked>
+                            <label for="exercise">练习</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="filter-group">
+                    <h3>统计数据</h3>
+                    <div style="padding: 10px 0;">
+                        <p>总课程数: <strong id="totalCourses">0</strong></p>
+                        <p>本周课时: <strong id="weeklyHours">0</strong></p>
+                        <p>教师人数: <strong id="teachersCount">0</strong></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content">
+                <div class="content-header">
+                    <h2>我的课程表</h2>
+                    <div class="search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="搜索课程或教师..." id="searchInput">
+                    </div>
+                </div>
+                
+                <div class="schedule-view">
+                    <div class="view-option active">列表视图</div>
+                    <div class="view-option">周视图</div>
+                    <div class="view-option">日视图</div>
+                </div>
+                
+                <table id="courseTable">
+                    <thead>
+                        <tr>
+                            <th>课程名称</th>
+                            <th>教师</th>
+                            <th>星期</th>
+                            <th>时间</th>
+                            <th>地点</th>
+                            <th>类型</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="courseTableBody">
+                        <!-- 课程数据将通过JavaScript动态填充 -->
+                    </tbody>
+                </table>
+                
+                <div class="pagination">
+                    <div class="page-btn"><i class="fas fa-chevron-left"></i></div>
+                    <div class="page-btn active">1</div>
+                    <div class="page-btn">2</div>
+                    <div class="page-btn">3</div>
+                    <div class="page-btn"><i class="fas fa-chevron-right"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加/编辑课程模态框 -->
+    <div class="modal" id="courseModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">添加课程</h3>
+                <span class="close-btn" id="closeModal">&times;</span>
+            </div>
+            
+            <div class="modal-body">
+                <form id="courseForm">
+                    <input type="hidden" id="courseId">
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="courseName">课程名称 *</label>
+                            <input type="text" class="form-control" id="courseName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="courseCode">课程代码</label>
+                            <input type="text" class="form-control" id="courseCode">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="teacherName">教师 *</label>
+                        <input type="text" class="form-control" id="teacherName" required>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="weekDay">星期 *</label>
+                            <select class="form-control" id="weekDay" required>
+                                <option value="">选择星期</option>
+                                <option value="1">星期一</option>
+                                <option value="2">星期二</option>
+                                <option value="3">星期三</option>
+                                <option value="4">星期四</option>
+                                <option value="5">星期五</option>
+                                <option value="6">星期六</option>
+                                <option value="7">星期日</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="courseType">课程类型 *</label>
+                            <select class="form-control" id="courseType" required>
+                                <option value="">选择类型</option>
+                                <option value="lecture">讲座</option>
+                                <option value="seminar">研讨</option>
+                                <option value="lab">实验</option>
+                                <option value="exercise">练习</option>
+                                <option value="other">其他</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="startTime">开始时间 *</label>
+                            <input type="time" class="form-control" id="startTime" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="endTime">结束时间 *</label>
+                            <input type="time" class="form-control" id="endTime" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="location">地点 *</label>
+                        <input type="text" class="form-control" id="location" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>课程颜色</label>
+                        <div class="color-picker">
+                            <div class="color-option selected" style="background-color: #4a6fa5;" data-color="#4a6fa5"></div>
+                            <div class="color-option" style="background-color: #6c8fc7;" data-color="#6c8fc7"></div>
+                            <div class="color-option" style="background-color: #ff7e5f;" data-color="#ff7e5f"></div>
+                            <div class="color-option" style="background-color: #63b7af;" data-color="#63b7af"></div>
+                            <div class="color-option" style="background-color: #b5ea8c;" data-color="#b5ea8c"></div>
+                            <div class="color-option" style="background-color: #f0a04b;" data-color="#f0a04b"></div>
+                            <div class="color-option" style="background-color: #9e579d;" data-color="#9e579d"></div>
+                            <div class="color-option" style="background-color: #574b90;" data-color="#574b90"></div>
+                        </div>
+                        <input type="hidden" id="courseColor" value="#4a6fa5">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="courseNote">备注</label>
+                        <textarea class="form-control" id="courseNote" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-outline" id="cancelBtn">取消</button>
+                <button class="btn btn-success" id="saveCourseBtn">保存课程</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 确认删除模态框 -->
+    <div class="modal" id="confirmModal">
+        <div class="modal-content" style="width: 400px;">
+            <div class="modal-header">
+                <h3>确认删除</h3>
+                <span class="close-btn" id="closeConfirmModal">&times;</span>
+            </div>
+            
+            <div class="modal-body">
+                <p>确定要删除此课程吗？此操作无法撤销。</p>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-outline" id="cancelDeleteBtn">取消</button>
+                <button class="btn btn-danger" id="confirmDeleteBtn">删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast通知 -->
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMessage">操作成功</span>
+    </div>
+
+    <script>
+        // 示例数据
+        let courses = [
+            {
+                id: 1,
+
 </html>
