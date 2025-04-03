@@ -15,8 +15,18 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^6.7.2",
+    "axios": "^1.8.4",
+    "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
-    "express": "^4.21.2"
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "fs": "^0.0.1-security",
+    "openai": "^4.91.1",
+    "sequelize": "^6.37.7",
+    "sqlite3": "^5.1.7",
+    "tailwindcss": "^4.1.1"
   }
 }

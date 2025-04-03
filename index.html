@@ -703,20 +703,27 @@
 </head>
 <body>
     <div class="container">
+        <!-- 在header部分修改 -->
         <header>
             <div class="logo">
                 <i class="fas fa-calendar-alt"></i>
-                <h1>智能课程表管理系统</h1>
+                <h1>智能课程表</h1>
             </div>
             <div class="user-actions">
-                <button class="btn btn-outline" id="exportBtn">
-                    <i class="fas fa-file-export"></i> 导出
+                <div class="user-info">
+                    欢迎，<span id="username">用户</span>
+                    <a href="dashboard.html" class="btn btn-outline" style="text-decoration: none;">
+                        <i class="fas fa-home"></i> 主页
+                    </a>
+                </div>
+                <button class="btn btn-primary" id="addCourseBtn">
+                    <i class="fas fa-plus"></i> 添加课程
                 </button>
                 <button class="btn btn-outline" id="importBtn">
                     <i class="fas fa-file-import"></i> 导入
                 </button>
-                <button class="btn btn-primary" id="addCourseBtn">
-                    <i class="fas fa-plus"></i> 添加课程
+                <button class="btn btn-outline" id="exportBtn">
+                    <i class="fas fa-file-export"></i> 导出
                 </button>
             </div>
         </header>
@@ -895,7 +902,7 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="teacherName">教师 *</label>
+                        <label for="teacherName">教师</label>
                         <input type="text" class="form-control" id="teacherName" required>
                     </div>
                     
@@ -938,7 +945,7 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="location">地点 *</label>
+                        <label for="location">地点</label>
                         <input type="text" class="form-control" id="location" required>
                     </div>
                     
@@ -1084,6 +1091,55 @@
             }
         });
 
+        // 检查用户是否已登录
+        async function checkAuth() {
+            try {
+                const response = await fetch(`${API_URL}/me`, {
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    // 未登录，重定向到登录页
+                    window.location.href = 'login.html';
+                    return false;
+                }
+                
+                const user = await response.json();
+                // 显示用户名
+                document.getElementById('username').textContent = user.username;
+                return true;
+            } catch (error) {
+                console.error('检查登录状态失败:', error);
+                window.location.href = 'login.html';
+                return false;
+            }
+        }
+
+        // 退出登录
+        async function logout() {
+            try {
+                await fetch(`${API_URL}/logout`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                
+                // 重定向到登录页
+                window.location.href = 'login.html';
+            } catch (error) {
+                console.error('退出登录失败:', error);
+            }
+        }
+
+        // 在页面加载时检查登录状态
+        document.addEventListener('DOMContentLoaded', async () => {
+            const isLoggedIn = await checkAuth();
+            if (isLoggedIn) {
+                fetchCourses();
+            }
+        });
+
+        // 添加退出登录按钮的事件监听
+        document.getElementById('logoutBtn').addEventListener('click', logout);
         // 初始化页面
         renderCourseTable();
 
@@ -1151,9 +1207,12 @@
         const API_URL = 'http://localhost:3000/api';
     
         // 获取所有课程
+        // 获取所有课程
         async function fetchCourses() {
             try {
-                const response = await fetch(`${API_URL}/courses`);
+                const response = await fetch(`${API_URL}/courses`, {
+                    credentials: 'include'  // 确保发送凭证
+                });
                 if (!response.ok) {
                     throw new Error('获取课程失败');
                 }
@@ -1279,18 +1338,45 @@
             courseModal.style.display = 'flex';
         }
     
-        // 验证表单
-        function validateForm() {
+         // 验证表单
+         function validateForm() {
             const courseName = document.getElementById('courseName').value;
-            const teacherName = document.getElementById('teacherName').value;
             const weekDay = document.getElementById('weekDay').value;
             const courseType = document.getElementById('courseType').value;
             const startTime = document.getElementById('startTime').value;
             const endTime = document.getElementById('endTime').value;
-            const location = document.getElementById('location').value;
             
-            if (!courseName || !teacherName || !weekDay || !courseType || !startTime || !endTime || !location) {
-                showToast('请填写所有必填字段', 'error');
+            if (!courseName) {
+                showToast('请填写课程名称', 'error');
+                return false;
+            }
+            
+            if (!weekDay) {
+                showToast('请选择星期', 'error');
+                return false;
+            }
+            
+            if (!courseType) {
+                showToast('请选择课程类型', 'error');
+                return false;
+            }
+            
+            if (!startTime) {
+                showToast('请选择开始时间', 'error');
+                return false;
+            }
+            
+            if (!endTime) {
+                showToast('请选择结束时间', 'error');
+                return false;
+            }
+            
+            // 验证时间格式和逻辑
+            const startMinutes = timeToMinutes(startTime);
+            const endMinutes = timeToMinutes(endTime);
+            
+            if (endMinutes <= startMinutes) {
+                showToast('结束时间必须晚于开始时间', 'error');
                 return false;
             }
             
@@ -1305,12 +1391,12 @@
             const courseData = {
                 name: document.getElementById('courseName').value,
                 code: document.getElementById('courseCode').value,
-                teacher: document.getElementById('teacherName').value,
+                teacher: document.getElementById('teacherName').value || '未指定', // 如果为空，使用默认值
                 weekDay: parseInt(document.getElementById('weekDay').value),
                 type: document.getElementById('courseType').value,
                 startTime: document.getElementById('startTime').value,
                 endTime: document.getElementById('endTime').value,
-                location: document.getElementById('location').value,
+                location: document.getElementById('location').value || '未指定', // 如果为空，使用默认值
                 color: document.getElementById('courseColor').value,
                 note: document.getElementById('courseNote').value
             };
@@ -1480,8 +1566,60 @@
             });
         });
     
-        // 导入功能
+                // ... 保留原有代码 ...
+
+        // 修改导入功能
         document.getElementById('importBtn').addEventListener('click', () => {
+            // 显示导入选项
+            showImportOptions();
+        });
+
+        // 显示导入选项
+        function showImportOptions() {
+            // 创建一个模态框来选择导入方式
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.style.display = 'flex';
+            
+            modal.innerHTML = `
+                <div class="modal-content" style="width: 400px;">
+                    <div class="modal-header">
+                        <h3>选择导入方式</h3>
+                        <span class="close-btn" id="closeImportOptionsModal">&times;</span>
+                    </div>
+                    
+                    <div class="modal-body">
+                        <div class="import-options">
+                            <button class="btn btn-outline" id="importJsonBtn" style="margin-bottom: 10px; width: 100%;">
+                                <i class="fas fa-file-code"></i> 从JSON文件导入
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // 关闭按钮事件
+            document.getElementById('closeImportOptionsModal').addEventListener('click', () => {
+                document.body.removeChild(modal);
+            });
+            
+            // JSON导入按钮事件
+            document.getElementById('importJsonBtn').addEventListener('click', () => {
+                document.body.removeChild(modal);
+                importFromJson();
+            });
+            
+            // 图片导入按钮事件
+            document.getElementById('importImageBtn').addEventListener('click', () => {
+                document.body.removeChild(modal);
+                importFromImage();
+            });
+        }
+
+        // 从JSON文件导入
+        function importFromJson() {
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = '.json';
@@ -1515,7 +1653,65 @@
             };
             
             input.click();
-        });
+        }
+
+
+      // 格式化时间为HH:MM格式
+        function formatTime(timeStr) {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        }
+
+        // 生成随机颜色
+        function getRandomColor() {
+            const colors = [
+                '#4a6fa5', '#6c8fc7', '#ff7e5f', '#63b7af', 
+                '#b5ea8c', '#f0a04b', '#9e579d', '#574b90'
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        // 添加样式
+        const styleElement = document.createElement('style');
+        styleElement.textContent = `
+            .progress-bar {
+                width: 100%;
+                height: 10px;
+                background-color: #f0f0f0;
+                border-radius: 5px;
+                overflow: hidden;
+                margin: 10px 0;
+            }
+            
+            .progress-bar-fill {
+                height: 100%;
+                background-color: var(--primary-color);
+                transition: width 0.3s ease;
+            }
+            
+            .table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            
+            .table th, .table td {
+                padding: 8px;
+                border: 1px solid #ddd;
+            }
+            
+            .table th {
+                background-color: #f5f5f5;
+                text-align: left;
+            }
+            
+            .btn-sm {
+                padding: 5px 10px;
+                font-size: 12px;
+            }
+        `;
+        document.head.appendChild(styleElement);
+
+        // ... 保留原有代码 ...
         
         // 初始化页面
         fetchCourses();
@@ -1567,6 +1763,7 @@
     ];
     
     // 渲染周视图（课表）
+    // 渲染周视图（课表）
     function renderWeekView() {
         const timetableBody = document.getElementById('timetableBody');
         timetableBody.innerHTML = '';
@@ -1600,7 +1797,6 @@
                     
                     courseCard.innerHTML = `
                         <div class="course-name">${course.name}</div>
-                        <div class="course-info">${course.teacher}</div>
                         <div class="course-location">${course.location}</div>
                         <div class="course-actions">
                             <div class="course-action" onclick="event.stopPropagation(); editCourse(${course.id})">
@@ -1690,7 +1886,6 @@
                 
                 courseCard.innerHTML = `
                     <div class="course-name">${course.name}</div>
-                    <div class="course-info">${course.teacher}</div>
                     <div class="course-location">${course.location}</div>
                     <div class="course-actions">
                         <div class="course-action" onclick="event.stopPropagation(); editCourse(${course.id})">

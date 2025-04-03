@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>番茄钟统计 - 学习助手</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+        
+        .bg-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+        
+        .static-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            opacity: 0.7;
+            transition: opacity 0.5s ease;
+        }
+        
+        .main-container {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            padding: 2rem;
+            margin: 2rem auto;
+            max-width: 1200px;
+            position: relative;
+        }
+        
+        .stats-card {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        
+        .date-selector {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .date-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .date-btn.active {
+            background-color: #4f46e5;
+            color: white;
+        }
+        
+        .task-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .task-item {
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            transition: background-color 0.3s ease;
+        }
+        
+        .task-item:hover {
+            background-color: rgba(55, 65, 81, 0.7);
+        }
+        
+        .task-item.completed {
+            border-left: 4px solid #10b981;
+        }
+        
+        .task-item.incomplete {
+            border-left: 4px solid #ef4444;
+        }
+        
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(79, 70, 229, 0.6);
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(79, 70, 229, 0.8);
+        }
+        
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 1.5rem;
+                margin: 1rem;
+            }
+            
+            .grid-cols-2 {
+                grid-template-columns: 1fr;
+            }
+            
+            .chart-container {
+                height: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 背景容器 -->
+    <div class="bg-container">
+        <div id="static-bg" class="static-bg" style="background-image: url('https://source.unsplash.com/random/1920x1080/?study')"></div>
+    </div>
+    
+    <!-- 主容器 -->
+    <div class="main-container">
+        <!-- 顶部工具栏 -->
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-white flex items-center">
+                <i class="fas fa-chart-bar mr-2 text-indigo-400"></i>
+                <span class="bg-gradient-to-r from-indigo-400 to-purple-600 bg-clip-text text-transparent">番茄钟统计</span>
+            </h1>
+            <div class="flex items-center">
+                <a href="pomodoro.html" class="p-2 mr-2 rounded-full hover:bg-gray-700 transition-all text-gray-400 hover:text-gray-200" title="返回番茄钟">
+                    <i class="fas fa-clock text-sm"></i>
+                </a>
+                <a href="dashboard.html" class="p-2 rounded-full hover:bg-gray-700 transition-all text-gray-400 hover:text-gray-200" title="返回主页">
+                    <i class="fas fa-home text-sm"></i>
+                </a>
+            </div>
+        </div>
+        
+        <!-- 统计概览 -->
+        <div class="grid grid-cols-4 gap-4 mb-6">
+            <div class="stats-card">
+                <h3 class="text-gray-400 text-sm mb-1">总任务数</h3>
+                <p class="text-3xl font-bold" id="total-tasks">0</p>
+                <div class="mt-2 text-sm text-gray-400">所有记录的任务</div>
+            </div>
+            <div class="stats-card">
+                <h3 class="text-gray-400 text-sm mb-1">完成任务数</h3>
+                <p class="text-3xl font-bold text-green-500" id="completed-tasks">0</p>
+                <div class="mt-2 text-sm text-gray-400">成功完成的任务</div>
+            </div>
+            <div class="stats-card">
+                <h3 class="text-gray-400 text-sm mb-1">完成率</h3>
+                <p class="text-3xl font-bold text-indigo-500" id="completion-rate">0%</p>
+                <div class="mt-2 text-sm text-gray-400">任务完成比例</div>
+            </div>
+            <div class="stats-card">
+                <h3 class="text-gray-400 text-sm mb-1">总专注时间</h3>
+                <p class="text-3xl font-bold text-purple-500" id="total-focus-time">0小时</p>
+                <div class="mt-2 text-sm text-gray-400">累计专注时长</div>
+            </div>
+        </div>
+        
+        <!-- 时间范围选择器 -->
+        <div class="date-selector mb-6">
+            <button class="date-btn active" data-range="day">今天</button>
+            <button class="date-btn" data-range="week">本周</button>
+            <button class="date-btn" data-range="month">本月</button>
+            <button class="date-btn" data-range="all">全部</button>
+        </div>
+        
+        <!-- 图表和任务列表 -->
+        <div class="grid grid-cols-2 gap-6">
+            <!-- 左侧图表 -->
+            <div class="space-y-6">
+                <!-- 每日专注时间图表 -->
+                <div class="stats-card">
+                    <h3 class="text-lg font-medium mb-4">专注时间统计</h3>
+                    <div class="chart-container">
+                        <canvas id="focus-time-chart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- 任务完成率图表 -->
+                <div class="stats-card">
+                    <h3 class="text-lg font-medium mb-4">任务完成率</h3>
+                    <div class="chart-container">
+                        <canvas id="completion-rate-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右侧任务列表 -->
+            <div class="stats-card">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium">任务历史记录</h3>
+                    <div class="flex space-x-2">
+                        <button id="show-all-btn" class="text-sm px-3 py-1 rounded bg-gray-700 hover:bg-gray-600">全部</button>
+                        <button id="show-completed-btn" class="text-sm px-3 py-1 rounded bg-gray-700 hover:bg-gray-600">已完成</button>
+                        <button id="show-incomplete-btn" class="text-sm px-3 py-1 rounded bg-gray-700 hover:bg-gray-600">未完成</button>
+                    </div>
+                </div>
+                
+                <div class="task-list" id="task-list">
+                    <!-- 任务列表将通过JavaScript动态生成 -->
+                    <div class="flex justify-center items-center h-40 text-gray-500">
+                        <p>加载中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // API URL
+        const API_URL = 'http://localhost:3000/api';
+        let currentUser = null;
+        let allTasks = [];
+        let currentDateRange = 'day';
+        let currentTaskFilter = 'all';
+        
+        // DOM元素
+        const totalTasksEl = document.getElementById('total-tasks');
+        const completedTasksEl = document.getElementById('completed-tasks');
+        const completionRateEl = document.getElementById('completion-rate');
+        const totalFocusTimeEl = document.getElementById('total-focus-time');
+        const taskListEl = document.getElementById('task-list');
+        const dateButtons = document.querySelectorAll('.date-btn');
+        const showAllBtn = document.getElementById('show-all-btn');
+        const showCompletedBtn = document.getElementById('show-completed-btn');
+        const showIncompleteBtn = document.getElementById('show-incomplete-btn');
+        const staticBg = document.getElementById('static-bg');
+        
+        // 图表实例
+        let focusTimeChart;
+        let completionRateChart;
+        
+        // 检查用户是否已登录
+        async function checkLogin() {
+            try {
+                const response = await fetch(`${API_URL}/me`, {
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    window.location.href = 'login.html';
+                    return false;
+                }
+                
+                const user = await response.json();
+                currentUser = user;
+                return true;
+            } catch (error) {
+                console.error('检查登录状态失败:', error);
+                window.location.href = 'login.html';
+                return false;
+            }
+        }
+
+        // 获取任务数据
+        async function fetchTasks() {
+            try {
+                console.log('开始获取任务数据...');
+                
+                // 尝试从API获取数据
+                const response = await fetch(`${API_URL}/tasks`, {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                let tasksArray = [];
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('从API获取到的原始任务数据:', data);
+                    
+                    // 确保数据是数组格式
+                    if (Array.isArray(data)) {
+                        tasksArray = data;
+                    } else if (data && typeof data === 'object') {
+                        // 如果返回的是对象而不是数组，尝试提取任务数组
+                        if (data.tasks && Array.isArray(data.tasks)) {
+                            tasksArray = data.tasks;
+                        } else if (data.data && Array.isArray(data.data)) {
+                            tasksArray = data.data;
+                        }
+                    }
+                } else {
+                    console.warn('API请求失败，尝试从本地存储获取数据');
+                }
+                
+                // 如果API获取失败或没有数据，尝试从localStorage获取
+                if (tasksArray.length === 0) {
+                    try {
+                        const localTasks = JSON.parse(localStorage.getItem('pomodoroTasks') || '[]');
+                        console.log('从localStorage获取到的任务:', localTasks);
+                        
+                        if (localTasks && localTasks.length > 0) {
+                            tasksArray = localTasks;
+                        }
+                    } catch (e) {
+                        console.error('读取本地存储任务失败:', e);
+                    }
+                }
+                
+                console.log('处理前的任务数组:', tasksArray);
+                
+                // 按照新的要求过滤任务
+                const filteredTasks = tasksArray.filter(task => {
+                    // 1. 不统计休息模式的任务
+                    if (task.isBreakMode) return false;
+                    
+                    // 2. 必须是已经开始了的任务
+                    if (!task.startTime) return false;
+                    
+                    // 3. 只统计已完成或已放弃的任务
+                    // 已完成：倒计时为0，状态为completed
+                    const isCompleted = task.status === 'completed';
+                    
+                    // 已放弃：用户按下重置按钮
+                    const isAbandoned = 
+                        task.status === 'abandoned' || 
+                        task.status === 'reset' ||
+                        task.isReset === true || 
+                        task.wasReset === true;
+                    
+                    // 只保留已完成或已放弃的任务
+                    return isCompleted || isAbandoned;
+                }).map(task => {
+                    // 标准化任务状态
+                    const newTask = {...task};
+                    
+                    // 明确定义已完成任务：状态为completed
+                    const isCompleted = task.status === 'completed';
+                    
+                    // 设置标准化状态
+                    if (isCompleted) {
+                        newTask.status = 'completed';
+                    } else {
+                        newTask.status = 'abandoned';
+                    }
+                    
+                    return newTask;
+                });
+                
+                console.log('过滤后的任务数组:', filteredTasks);
+                
+                allTasks = filteredTasks;
+                return allTasks;
+            } catch (error) {
+                console.error('获取任务数据出错:', error);
+                
+                // 出错时尝试从localStorage获取
+                try {
+                    const localTasks = JSON.parse(localStorage.getItem('pomodoroTasks') || '[]');
+                    console.log('从localStorage获取到的任务:', localTasks);
+                    
+                    if (localTasks && localTasks.length > 0) {
+                        // 按照新的要求过滤任务
+                        const filteredTasks = localTasks.filter(task => {
+                            // 1. 不统计休息模式的任务
+                            if (task.isBreakMode) return false;
+                            
+                            // 2. 必须是已经开始了的任务
+                            if (!task.startTime) return false;
+                            
+                            // 3. 只统计已完成或已放弃的任务
+                            // 已完成：倒计时为0，状态为completed
+                            const isCompleted = task.status === 'completed';
+                            
+                            // 已放弃：用户按下重置按钮
+                            const isAbandoned = 
+                                task.status === 'abandoned' || 
+                                task.status === 'reset' ||
+                                task.isReset === true || 
+                                task.wasReset === true;
+                            
+                            // 只保留已完成或已放弃的任务
+                            return isCompleted || isAbandoned;
+                        }).map(task => {
+                            // 标准化任务状态
+                            const newTask = {...task};
+                            
+                            // 明确定义已完成任务：状态为completed
+                            const isCompleted = task.status === 'completed';
+                            
+                            // 设置标准化状态
+                            if (isCompleted) {
+                                newTask.status = 'completed';
+                            } else {
+                                newTask.status = 'abandoned';
+                            }
+                            
+                            return newTask;
+                        });
+                        
+                        allTasks = filteredTasks;
+                        return allTasks;
+                    }
+                } catch (e) {
+                    console.error('读取本地存储任务失败:', e);
+                }
+                
+                taskListEl.innerHTML = `<div class="flex justify-center items-center h-40 text-red-500">
+                    <p>获取数据失败: ${error.message}</p>
+                </div>`;
+                return [];
+            }
+        }
+
+        // 根据日期范围筛选任务
+        function filterTasksByDateRange(tasks, range) {
+            if (!Array.isArray(tasks) || tasks.length === 0) {
+                return [];
+            }
+            
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            
+            console.log('筛选日期范围:', range, '任务总数:', tasks.length); // 添加日志
+            
+            switch (range) {
+                case 'day':
+                    // 今天的任务
+                    return tasks.filter(task => {
+                        if (!task.startTime) return false;
+                        const taskDate = new Date(task.startTime);
+                        return taskDate.getDate() === today.getDate() &&
+                               taskDate.getMonth() === today.getMonth() &&
+                               taskDate.getFullYear() === today.getFullYear();
+                    });
+                
+                case 'week':
+                    // 本周的任务（周一到周日）
+                    const firstDayOfWeek = new Date(today);
+                    const day = today.getDay() || 7; // 如果是周日，getDay()返回0，我们将其视为7
+                    firstDayOfWeek.setDate(today.getDate() - (day - 1)); // 设置为本周一
+                    
+                    return tasks.filter(task => {
+                        if (!task.startTime) return false;
+                        const taskDate = new Date(task.startTime);
+                        return taskDate >= firstDayOfWeek;
+                    });
+                
+                case 'month':
+                    // 本月的任务
+                    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                    
+                    return tasks.filter(task => {
+                        if (!task.startTime) return false;
+                        const taskDate = new Date(task.startTime);
+                        return taskDate.getMonth() === now.getMonth() &&
+                               taskDate.getFullYear() === now.getFullYear();
+                    });
+                
+                case 'all':
+                default:
+                    // 所有任务
+                    return tasks;
+            }
+        }
+        
+                // 更新统计概览
+                function updateStatsSummary(tasks) {
+            const filteredTasks = filterTasksByDateRange(tasks, currentDateRange);
+            
+            // 计算总任务数 (只计算工作模式的任务)
+            const totalTasks = filteredTasks.length;
+            
+            // 计算完成的任务数
+            const completedTasks = filteredTasks.filter(task => task.status === 'completed').length;
+            
+            // 计算完成率
+            const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+            
+            // 计算总专注时间（秒）
+            const totalFocusSeconds = filteredTasks.reduce((total, task) => {
+                // 确保只统计工作模式的时间，并且使用实际专注时间
+                if (task.actualDuration) {
+                    return total + task.actualDuration;
+                } else if (task.plannedDuration && task.status === 'completed') {
+                    // 如果任务已完成但没有记录实际时间，使用计划时间
+                    return total + task.plannedDuration;
+                } else if (task.status === 'abandoned') {
+                    // 已放弃任务的专注时间计算
+                    if (task.elapsedSeconds !== undefined) {
+                        // 如果有已经过时间，直接使用
+                        return total + task.elapsedSeconds;
+                    } else if (task.actualTime !== undefined) {
+                        // 兼容其他可能的时间记录字段
+                        return total + task.actualTime;
+                    } else if (task.remainingSeconds !== undefined && task.plannedDuration) {
+                        // 如果有剩余时间和计划时间，用计划时间减去剩余时间
+                        return total + (task.plannedDuration - task.remainingSeconds);
+                    }
+                }
+                return total;
+            }, 0);
+            
+            // 转换为小时和分钟
+            const totalHours = Math.floor(totalFocusSeconds / 3600);
+            const totalMinutes = Math.floor((totalFocusSeconds % 3600) / 60);
+            
+            // 更新DOM
+            totalTasksEl.textContent = totalTasks;
+            completedTasksEl.textContent = completedTasks;
+            completionRateEl.textContent = `${completionRate}%`;
+            
+            if (totalHours > 0) {
+                totalFocusTimeEl.textContent = `${totalHours}小时${totalMinutes}分钟`;
+            } else {
+                totalFocusTimeEl.textContent = `${totalMinutes}分钟`;
+            }
+        }
+        
+        // 根据任务状态筛选任务
+        function filterTasksByStatus(tasks, status) {
+            if (status === 'all') {
+                return tasks; // 已经在fetchTasks中过滤过，这里返回的都是已完成或已放弃的任务
+            } else if (status === 'completed') {
+                return tasks.filter(task => task.status === 'completed');
+            } else if (status === 'abandoned' || status === 'incomplete') {
+                // 处理已放弃的任务，兼容可能的 incomplete 状态
+                return tasks.filter(task => task.status === 'abandoned');
+            }
+            return tasks;
+        }
+        
+        // 渲染任务列表
+        function renderTaskList(tasks) {
+            if (!Array.isArray(tasks) || tasks.length === 0) {
+                taskListEl.innerHTML = `<div class="flex justify-center items-center h-40 text-gray-500">
+                    <p>暂无任务记录</p>
+                </div>`;
+                return;
+            }
+            
+            // 根据当前筛选条件过滤任务
+            const filteredTasks = filterTasksByStatus(
+                filterTasksByDateRange(tasks, currentDateRange),
+                currentTaskFilter
+            );
+            
+            if (filteredTasks.length === 0) {
+                taskListEl.innerHTML = `<div class="flex justify-center items-center h-40 text-gray-500">
+                    <p>没有符合条件的任务</p>
+                </div>`;
+                return;
+            }
+            
+            // 按开始时间降序排序
+            const sortedTasks = [...filteredTasks].sort((a, b) => {
+                return new Date(b.startTime) - new Date(a.startTime);
+            });
+            
+            // 生成任务列表HTML
+            const tasksHTML = sortedTasks.map(task => {
+                const startTime = new Date(task.startTime);
+                const formattedDate = `${startTime.getFullYear()}-${(startTime.getMonth() + 1).toString().padStart(2, '0')}-${startTime.getDate().toString().padStart(2, '0')}`;
+                const formattedTime = `${startTime.getHours().toString().padStart(2, '0')}:${startTime.getMinutes().toString().padStart(2, '0')}`;
+                
+                                // 计算实际专注时间
+                                let actualDuration = 0;
+                if (task.actualDuration) {
+                    // 如果有记录实际时间，直接使用
+                    actualDuration = task.actualDuration;
+                } else if (task.plannedDuration && task.status === 'completed') {
+                    // 已完成任务使用计划时间
+                    actualDuration = task.plannedDuration;
+                } else if (task.status === 'abandoned') {
+                    // 已放弃任务的专注时间计算
+                    if (task.elapsedSeconds !== undefined) {
+                        // 如果有已经过时间，直接使用
+                        actualDuration = task.elapsedSeconds;
+                    } else if (task.actualTime !== undefined) {
+                        // 兼容其他可能的时间记录字段
+                        actualDuration = task.actualTime;
+                    } else if (task.remainingSeconds !== undefined && task.plannedDuration) {
+                        // 如果有剩余时间和计划时间，用计划时间减去剩余时间
+                        actualDuration = task.plannedDuration - task.remainingSeconds;
+                    } else {
+                        // 如果没有任何时间记录，默认为0
+                        actualDuration = 0;
+                    }
+                }
+                
+                // 确保时间不为负数
+                actualDuration = Math.max(0, actualDuration);
+
+                const minutes = Math.floor(actualDuration / 60);
+                const seconds = actualDuration % 60;
+                const durationText = `${minutes}分${seconds}秒`;
+                
+                // 任务状态样式 - 只有已完成和已放弃两种状态
+                let statusClass = '';
+                let statusText = '';
+                
+                if (task.status === 'completed') {
+                    statusClass = 'bg-green-900 text-green-300';
+                    statusText = '已完成';
+                } else {
+                    // 其他状态都视为已放弃
+                    statusClass = 'bg-red-900 text-red-300';
+                    statusText = '已放弃';
+                }
+                
+                return `
+                <div class="task-item p-3 mb-3 bg-gray-800 rounded-lg">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-medium text-white">${task.taskName || '未命名任务'}</h4>
+                            <p class="text-sm text-gray-400">${formattedDate} ${formattedTime}</p>
+                        </div>
+                        <span class="px-2 py-1 text-xs rounded ${statusClass}">${statusText}</span>
+                    </div>
+                    <div class="mt-2 text-sm">
+                        <span class="text-purple-400">专注时长: ${durationText}</span>
+                    </div>
+                </div>`;
+            }).join('');
+            
+            taskListEl.innerHTML = tasksHTML;
+        }
+        // 创建专注时间图表
+        function createFocusTimeChart(tasks) {
+            const ctx = document.getElementById('focus-time-chart').getContext('2d');
+            
+            // 准备数据
+            const chartData = prepareTimeChartData(tasks, currentDateRange);
+            
+            // 如果已有图表实例，销毁它
+            if (focusTimeChart) {
+                focusTimeChart.destroy();
+            }
+            
+            // 创建新图表
+            focusTimeChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [{
+                        label: '专注时间（分钟）',
+                        data: chartData.data,
+                        backgroundColor: 'rgba(79, 70, 229, 0.7)',
+                        borderColor: 'rgba(79, 70, 229, 1)',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const minutes = context.raw;
+                                    if (minutes >= 60) {
+                                        const hours = Math.floor(minutes / 60);
+                                        const mins = minutes % 60;
+                                        return `${hours}小时${mins}分钟`;
+                                    }
+                                    return `${minutes}分钟`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+                // 创建完成率图表
+                function createCompletionRateChart(tasks) {
+            const ctx = document.getElementById('completion-rate-chart').getContext('2d');
+            
+            // 如果已有图表实例，销毁它
+            if (completionRateChart) {
+                completionRateChart.destroy();
+            }
+            
+            // 根据当前日期范围选择不同的图表类型
+            if (currentDateRange === 'day') {
+                // 单日使用饼状图显示完成和放弃的任务占比
+                const filteredTasks = filterTasksByDateRange(tasks, 'day');
+                const completedCount = filteredTasks.filter(task => task.status === 'completed').length;
+                const abandonedCount = filteredTasks.filter(task => task.status === 'abandoned').length;
+                
+                // 创建饼图
+                completionRateChart = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['已完成', '已放弃'],
+                        datasets: [{
+                            data: [completedCount, abandonedCount],
+                            backgroundColor: [
+                                'rgba(16, 185, 129, 0.7)', // 绿色 - 已完成
+                                'rgba(239, 68, 68, 0.7)'   // 红色 - 已放弃
+                            ],
+                            borderColor: [
+                                'rgba(16, 185, 129, 1)',
+                                'rgba(239, 68, 68, 1)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: 'rgba(255, 255, 255, 0.7)',
+                                    padding: 15,
+                                    font: {
+                                        size: 12
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.raw || 0;
+                                        const total = completedCount + abandonedCount;
+                                        const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                        return `${label}: ${value}个 (${percentage}%)`;
+                                    }
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: '今日任务完成情况',
+                                color: 'rgba(255, 255, 255, 0.9)',
+                                font: {
+                                    size: 16
+                                },
+                                padding: {
+                                    top: 10,
+                                    bottom: 20
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // 如果没有任务，显示提示信息
+                if (completedCount === 0 && abandonedCount === 0) {
+                    document.getElementById('completion-rate-chart').parentNode.innerHTML = `
+                        <div class="flex justify-center items-center h-40 text-gray-500">
+                            <p>今日暂无任务记录</p>
+                        </div>
+                    `;
+                }
+            } else {
+                // 其他时间范围使用折线图
+                // 准备数据
+                const chartData = prepareCompletionChartData(tasks, currentDateRange);
+                
+                // 创建新图表
+                completionRateChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: chartData.labels,
+                        datasets: [{
+                            label: '任务完成率 (%)',
+                            data: chartData.data,
+                            backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                            borderColor: 'rgba(16, 185, 129, 1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true,
+                            pointBackgroundColor: 'rgba(16, 185, 129, 1)',
+                            pointRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `完成率: ${context.raw}%`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                },
+                                ticks: {
+                                    color: 'rgba(255, 255, 255, 0.7)',
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    color: 'rgba(255, 255, 255, 0.7)'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // 准备专注时间图表数据
+        function prepareTimeChartData(tasks, range) {
+            const now = new Date();
+            let labels = [];
+            let data = [];
+            
+            switch (range) {
+                case 'day':
+                    // 今天按小时统计
+                    for (let i = 0; i < 24; i++) {
+                        const hour = i < 10 ? `0${i}` : `${i}`;
+                        labels.push(`${hour}:00`);
+                        
+                        // 筛选该小时的任务
+                        const hourTasks = tasks.filter(task => {
+                            const taskDate = new Date(task.startTime);
+                            return taskDate.getHours() === i && 
+                                   taskDate.getDate() === now.getDate() &&
+                                   taskDate.getMonth() === now.getMonth() &&
+                                   taskDate.getFullYear() === now.getFullYear();
+                        });
+                        
+                        // 计算该小时的总专注分钟数
+                        const totalMinutes = Math.floor(hourTasks.reduce((total, task) => {
+                            // 使用实际专注时间
+                            if (task.actualDuration) {
+                                return total + task.actualDuration;
+                            } else if (task.plannedDuration && task.status === 'completed') {
+                                return total + task.plannedDuration;
+                            } else if (task.plannedDuration && task.status === 'abandoned' && task.remainingSeconds) {
+                                return total + (task.plannedDuration - task.remainingSeconds);
+                            }
+                            return total;
+                        }, 0) / 60);
+                        
+                        data.push(totalMinutes);
+                    }
+                    break;
+                
+                case 'week':
+                    // 本周按天统计
+                    const dayNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+                    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    const dayOfWeek = today.getDay() || 7; // 如果是周日，getDay()返回0，我们将其视为7
+                    
+                    for (let i = 0; i < 7; i++) {
+                        const day = new Date(today);
+                        day.setDate(today.getDate() - (dayOfWeek - 1) + i); // 从本周一开始
+                        
+                        const dayStr = `${day.getMonth() + 1}/${day.getDate()}`;
+                        labels.push(`${dayNames[i]}\n${dayStr}`);
+                        
+                        // 筛选该天的任务
+                        const dayTasks = tasks.filter(task => {
+                            const taskDate = new Date(task.startTime);
+                            return taskDate.getDate() === day.getDate() &&
+                                   taskDate.getMonth() === day.getMonth() &&
+                                   taskDate.getFullYear() === day.getFullYear();
+                        });
+                        
+                        // 计算该天的总专注分钟数
+                        const totalMinutes = Math.floor(dayTasks.reduce((total, task) => {
+                            return total + (task.actualDuration || 0);
+                        }, 0) / 60);
+                        
+                        data.push(totalMinutes);
+                    }
+                    break;
+                
+                case 'month':
+                    // 本月按天统计
+                    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+                    
+                    for (let i = 1; i <= daysInMonth; i++) {
+                        labels.push(`${i}日`);
+                        
+                        const day = new Date(now.getFullYear(), now.getMonth(), i);
+                        
+                        // 筛选该天的任务
+                        const dayTasks = tasks.filter(task => {
+                            const taskDate = new Date(task.startTime);
+                            return taskDate.getDate() === day.getDate() &&
+                                   taskDate.getMonth() === day.getMonth() &&
+                                   taskDate.getFullYear() === day.getFullYear();
+                        });
+                        
+                        // 计算该天的总专注分钟数
+                        const totalMinutes = Math.floor(dayTasks.reduce((total, task) => {
+                            return total + (task.actualDuration || 0);
+                        }, 0) / 60);
+                        
+                        data.push(totalMinutes);
+                    }
+                    break;
+                
+                case 'all':
+                default:
+                    // 按月统计
+                    const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+                    
+                    // 找出最早的任务日期
+                    let earliestDate = new Date();
+                    if (tasks.length > 0) {
+                        tasks.forEach(task => {
+                            const taskDate = new Date(task.startTime);
+                            if (taskDate < earliestDate) {
+                                earliestDate = taskDate;
+                            }
+                        });
+                    }
+                    
+                    // 从最早的月份到当前月份
+                    const startYear = earliestDate.getFullYear();
+                    const startMonth = earliestDate.getMonth();
+                    const currentYear = now.getFullYear();
+                    const currentMonth = now.getMonth();
+                    
+                    // 计算月份差
+                    const monthDiff = (currentYear - startYear) * 12 + (currentMonth - startMonth) + 1;
+                    const monthsToShow = Math.min(monthDiff, 12); // 最多显示12个月
+                    
+                    for (let i = 0; i < monthsToShow; i++) {
+                        const monthIndex = (currentMonth - i + 12) % 12; // 从当前月份往前推
+                        const yearOffset = Math.floor((currentMonth - i) / 12);
+                        const year = currentYear - yearOffset;
+                        
+                        labels.unshift(`${year}年${monthNames[monthIndex]}`);
+                        
+                        // 筛选该月的任务
+                        const monthTasks = tasks.filter(task => {
+                            const taskDate = new Date(task.startTime);
+                            return taskDate.getMonth() === monthIndex &&
+                                   taskDate.getFullYear() === year;
+                        });
+                        
+                        // 计算该月的总专注分钟数
+                        const totalMinutes = Math.floor(monthTasks.reduce((total, task) => {
+                            return total + (task.actualDuration || 0);
+                        }, 0) / 60);
+                        
+                        data.unshift(totalMinutes);
+                    }
+                    break;
+            }
+            
+            return { labels, data };
+        }
+        
+        // 准备完成率图表数据
+        function prepareCompletionChartData(tasks, range) {
+            const now = new Date();
+            let labels = [];
+            let data = [];
+            
+            switch (range) {
+                case 'day':
+                    // 今天按小时统计
+                    for (let i = 0; i < 24; i++) {
+                        const hour = i < 10 ? `0${i}` : `${i}`;
+                        labels.push(`${hour}:00`);
+                        
+                        // 筛选该小时的任务
+                        const hourTasks = tasks.filter(task => {
+                            const taskDate = new Date(task.startTime);
+                            return taskDate.getHours() === i && 
+                                   taskDate.getDate() === now.getDate() &&
+                                   taskDate.getMonth() === now.getMonth() &&
+                                   taskDate.getFullYear() === now.getFullYear();
+                        });
+                        
+                        // 计算该小时的完成率
+                        if (hourTasks.length > 0) {
+                            const completedTasks = hourTasks.filter(task => task.status === 'completed').length;
+                            const completionRate = Math.round((completedTasks / hourTasks.length) * 100);
+                            data.push(completionRate);
+                        } else {
+                            data.push(0);
+                        }
+                    }
+                    break;
+                
+                case 'week':
+                    // 本周按天统计
+                    const dayNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+                    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    const dayOfWeek = today.getDay() || 7; // 如果是周日，getDay()返回0，我们将其视为7
+                    
+                    for (let i = 0; i < 7; i++) {
+                        const day = new Date(today);
+                        day.setDate(today.getDate() - (dayOfWeek - 1) + i); // 从本周一开始
+                        
+                        const dayStr = `${day.getMonth() + 1}/${day.getDate()}`;
+                        labels.push(`${dayNames[i]}\n${dayStr}`);
+                        
+                        // 筛选该天的任务
+                        const dayTasks = tasks.filter(task => {
+                            const taskDate = new Date(task.startTime);
+                            return taskDate.getDate() === day.getDate() &&
+                                   taskDate.getMonth() === day.getMonth() &&
+                                   taskDate.getFullYear() === day.getFullYear();
+                        });
+                        
+                        // 计算该天的完成率
+                        if (dayTasks.length > 0) {
+                            const completedTasks = dayTasks.filter(task => task.status === 'completed').length;
+                            const completionRate = Math.round((completedTasks / dayTasks.length) * 100);
+                            data.push(completionRate);
+                        } else {
+                            data.push(0);
+                        }
+                    }
+                    break;
+                
+                case 'month':
+                    // 本月按天统计
+                    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+                    
+                    for (let i = 1; i <= daysInMonth; i++) {
+                        labels.push(`${i}日`);
+                        
+                        const day = new Date(now.getFullYear(), now.getMonth(), i);
+                        
+                        // 筛选该天的任务
+                        const dayTasks = tasks.filter(task => {
+                            const taskDate = new Date(task.startTime);
+                            return taskDate.getDate() === day.getDate() &&
+                                   taskDate.getMonth() === day.getMonth() &&
+                                   taskDate.getFullYear() === day.getFullYear();
+                        });
+                        
+                        // 计算该天的完成率
+                        if (dayTasks.length > 0) {
+                            const completedTasks = dayTasks.filter(task => task.status === 'completed').length;
+                            const completionRate = Math.round((completedTasks / dayTasks.length) * 100);
+                            data.push(completionRate);
+                        } else {
+                            data.push(0);
+                        }
+                    }
+                    break;
+                
+                case 'all':
+                default:
+                    // 按月统计
+                    const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+                    
+                    // 找出最早的任务日期
+                    let earliestDate = new Date();
+                    if (tasks.length > 0) {
+                        tasks.forEach(task => {
+                            const taskDate = new Date(task.startTime);
+                            if (taskDate < earliestDate) {
+                                earliestDate = taskDate;
+                            }
+                        });
+                    }
+                    
+                    // 从最早的月份到当前月份
+                    const startYear = earliestDate.getFullYear();
+                    const startMonth = earliestDate.getMonth();
+                    const currentYear = now.getFullYear();
+                    const currentMonth = now.getMonth();
+                    
+                    // 计算月份差
+                    const monthDiff = (currentYear - startYear) * 12 + (currentMonth - startMonth) + 1;
+                    const monthsToShow = Math.min(monthDiff, 12); // 最多显示12个月
+                    
+                    for (let i = 0; i < monthsToShow; i++) {
+                        const monthIndex = (currentMonth - i + 12) % 12; // 从当前月份往前推
+                        const yearOffset = Math.floor((currentMonth - i) / 12);
+                        const year = currentYear - yearOffset;
+                        
+                        labels.unshift(`${year}年${monthNames[monthIndex]}`);
+                        
+                        // 筛选该月的任务
+                        const monthTasks = tasks.filter(task => {
+                            const taskDate = new Date(task.startTime);
+                            return taskDate.getMonth() === monthIndex &&
+                                   taskDate.getFullYear() === year;
+                        });
+                        
+                        // 计算该月的完成率
+                        if (monthTasks.length > 0) {
+                            const completedTasks = monthTasks.filter(task => task.status === 'completed').length;
+                            const completionRate = Math.round((completedTasks / monthTasks.length) * 100);
+                            data.unshift(completionRate);
+                        } else {
+                            data.unshift(0);
+                        }
+                    }
+                    break;
+            }
+            
+            return { labels, data };
+        }
+        
+        // 更新所有统计数据和图表
+        function updateAllStats() {
+            updateStatsSummary(allTasks);
+            updateTaskList(allTasks);
+            createFocusTimeChart(allTasks);
+            createCompletionRateChart(allTasks);
+        }
+        
+        // 更新任务列表 - 添加这个函数
+        function updateTaskList(tasks) {
+            renderTaskList(tasks);
+        }
+        
+        // 初始化页面
+        async function init() {
+            // 更新筛选按钮文本
+            showAllBtn.textContent = '全部';
+            showCompletedBtn.textContent = '已完成';
+            showIncompleteBtn.textContent = '已放弃'; // 修改为"已放弃"而不是"未完成"
+            try {
+                console.log('开始初始化页面...');
+                
+                // 首先检查登录状态
+                const isLoggedIn = await checkLogin();
+                if (!isLoggedIn) {
+                    console.log('用户未登录，跳转到登录页面');
+                    return;
+                }
+                
+                // 获取任务数据
+                const tasks = await fetchTasks();
+                console.log('初始化获取到任务数据:', tasks); // 添加调试日志
+                
+                if (tasks && tasks.length > 0) {
+                    console.log(`成功获取到 ${tasks.length} 条任务记录`);
+                    // 更新所有统计数据和图表
+                    updateAllStats();
+                } else {
+                    console.log('没有获取到任务数据或数据为空');
+                    // 尝试从localStorage获取任务数据
+                    try {
+                        const localTasks = JSON.parse(localStorage.getItem('pomodoroTasks') || '[]');
+                        console.log('从localStorage获取到的任务:', localTasks);
+                        
+                        if (localTasks && localTasks.length > 0) {
+                            allTasks = localTasks;
+                            console.log(`从本地存储获取到 ${localTasks.length} 条任务记录`);
+                            updateAllStats();
+                            return;
+                        }
+                    } catch (e) {
+                        console.error('读取本地存储任务失败:', e);
+                    }
+                    
+                    taskListEl.innerHTML = `<div class="flex justify-center items-center h-40 text-gray-500">
+                        <p>暂无任务记录</p>
+                    </div>`;
+                }
+            } catch (error) {
+                console.error('初始化过程中出错:', error);
+                taskListEl.innerHTML = `<div class="flex justify-center items-center h-40 text-red-500">
+                    <p>加载失败: ${error.message}</p>
+                </div>`;
+            }
+            
+            // 添加日期范围按钮事件
+            dateButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    // 更新按钮样式
+                    dateButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    
+                    // 更新当前日期范围
+                    currentDateRange = button.dataset.range;
+                    
+                    // 更新统计数据和图表
+                    updateAllStats();
+                });
+            });
+            
+            // 添加任务筛选按钮事件
+            showAllBtn.addEventListener('click', () => {
+                currentTaskFilter = 'all';
+                updateTaskList(allTasks);
+            });
+            
+            showCompletedBtn.addEventListener('click', () => {
+                currentTaskFilter = 'completed';
+                updateTaskList(allTasks);
+            });
+            
+            showIncompleteBtn.addEventListener('click', () => {
+                currentTaskFilter = 'abandoned'; // 修改为 'abandoned' 而不是 'incomplete'
+                updateTaskList(allTasks);
+            });
+        }
+        
+        // 启动应用
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
