@@ -4,20 +4,12 @@ const bodyParser = require('body-parser');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const path = require('path');
-const { sequelize, User, Course } = require('./models');
-// 删除百度OCR API相关依赖
+const { sequelize, User, Course, PomodoroTask } = require('./models'); // 添加 PomodoroTask
 const multer = require('multer');
 const fs = require('fs');
-// 删除mongoose依赖
-// const mongoose = require('mongoose');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// 删除MongoDB连接代码
-// mongoose.connect('mongodb://localhost:27017/pomodoro')
-// .then(() => console.log('MongoDB连接成功'))
-// .catch(err => console.error('MongoDB连接失败:', err));
 
 // 设置文件上传
 const upload = multer({ 
@@ -29,7 +21,6 @@ const upload = multer({
 if (!fs.existsSync('uploads')) {
     fs.mkdirSync('uploads');
 }
-
 
 // 中间件
 app.use(cors({
@@ -280,6 +271,215 @@ apiRouter.delete('/delete-account', async (req, res) => {
         res.status(500).json({ message: '服务器错误' });
     }
 });
+app.use('/api', apiRouter);
+
+// 番茄钟任务相关路由
+// 获取所有番茄钟任务
+apiRouter.get('/tasks', async (req, res) => {
+    try {
+        if (!req.session.userId) {
+            return res.status(401).json({ message: '未登录' });
+        }
+        
+        const tasks = await PomodoroTask.findAll({
+            where: { UserId: req.session.userId },
+            order: [['startTime', 'DESC']]
+        });
+        
+        res.json(tasks);
+    } catch (error) {
+        console.error('获取番茄钟任务失败:', error);
+        res.status(500).json({ message: '服务器错误' });
+    }
+});
+
+// 创建新番茄钟任务
+apiRouter.post('/tasks', async (req, res) => {
+    try {
+        if (!req.session.userId) {
+            return res.status(401).json({ message: '未登录' });
+        }
+        
+        const taskData = req.body;
+        const task = await PomodoroTask.create({
+            ...taskData,
+            UserId: req.session.userId
+        });
+        
+        res.status(201).json(task);
+    } catch (error) {
+        console.error('创建番茄钟任务失败:', error);
+        res.status(500).json({ message: '服务器错误' });
+    }
+});
+
+// 更新番茄钟任务状态 - 暂停
+apiRouter.put('/tasks/:taskId/pause', async (req, res) => {
+    try {
+        if (!req.session.userId) {
+            return res.status(401).json({ message: '未登录' });
+        }
+        
+        const { taskId } = req.params;
+        const { pauseTime, elapsedSeconds } = req.body;
+        
+        const task = await PomodoroTask.findOne({
+            where: { 
+                taskId: taskId,
+                UserId: req.session.userId 
+            }
+        });
+        
+        if (!task) {
+            return res.status(404).json({ message: '任务不存在或无权限' });
+        }
+        
+        await task.update({
+            status: 'paused',
+            remainingSeconds: task.plannedDuration - elapsedSeconds
+        });
+        
+        res.json(task);
+    } catch (error) {
+        console.error('暂停番茄钟任务失败:', error);
+        res.status(500).json({ message: '服务器错误' });
+    }
+});
+
+// 更新番茄钟任务状态 - 完成
+apiRouter.put('/tasks/:taskId/complete', async (req, res) => {
+    try {
+        if (!req.session.userId) {
+            return res.status(401).json({ message: '未登录' });
+        }
+        
+        const { taskId } = req.params;
+        const { endTime, actualDuration } = req.body;
+        
+        const task = await PomodoroTask.findOne({
+            where: { 
+                taskId: taskId,
+                UserId: req.session.userId 
+            }
+        });
+        
+        if (!task) {
+            return res.status(404).json({ message: '任务不存在或无权限' });
+        }
+        
+        await task.update({
+            status: 'completed',
+            endTime: endTime || new Date(),
+            actualDuration: actualDuration || task.plannedDuration,
+            remainingSeconds: 0
+        });
+        
+        res.json(task);
+    } catch (error) {
+        console.error('完成番茄钟任务失败:', error);
+        res.status(500).json({ message: '服务器错误' });
+    }
+});
+
+// 更新番茄钟任务状态 - 放弃
+apiRouter.put('/tasks/:taskId/abandon', async (req, res) => {
+    try {
+        if (!req.session.userId) {
+            return res.status(401).json({ message: '未登录' });
+        }
+        
+        const { taskId } = req.params;
+        const { endTime, elapsedSeconds } = req.body;
+        
+        const task = await PomodoroTask.findOne({
+            where: { 
+                taskId: taskId,
+                UserId: req.session.userId 
+            }
+        });
+        
+        if (!task) {
+            return res.status(404).json({ message: '任务不存在或无权限' });
+        }
+        
+        await task.update({
+            status: 'abandoned',
+            endTime: endTime || new Date(),
+            actualDuration: elapsedSeconds || 0
+        });
+        
+        res.json(task);
+    } catch (error) {
+        console.error('放弃番茄钟任务失败:', error);
+        res.status(500).json({ message: '服务器错误' });
+    }
+});
+
+// 删除番茄钟任务
+apiRouter.delete('/tasks/:taskId', async (req, res) => {
+    try {
+        if (!req.session.userId) {
+            return res.status(401).json({ message: '未登录' });
+        }
+        
+        const { taskId } = req.params;
+        
+        const task = await PomodoroTask.findOne({
+            where: { 
+                taskId: taskId,
+                UserId: req.session.userId 
+            }
+        });
+        
+        if (!task) {
+            return res.status(404).json({ message: '任务不存在或无权限' });
+        }
+        
+        await task.destroy();
+        
+        res.json({ message: '删除成功' });
+    } catch (error) {
+        console.error('删除番茄钟任务失败:', error);
+        res.status(500).json({ message: '服务器错误' });
+    }
+});
+
+// 注销账号时也删除番茄钟任务
+apiRouter.delete('/delete-account', async (req, res) => {
+    try {
+        if (!req.session.userId) {
+            return res.status(401).json({ message: '未登录' });
+        }
+        
+        // 查找用户
+        const user = await User.findByPk(req.session.userId);
+        if (!user) {
+            return res.status(404).json({ message: '用户不存在' });
+        }
+        
+        // 查找并删除用户的所有课程
+        await Course.destroy({
+            where: { UserId: req.session.userId }
+        });
+        
+        // 查找并删除用户的所有番茄钟任务
+        await PomodoroTask.destroy({
+            where: { UserId: req.session.userId }
+        });
+        
+        // 删除用户
+        await user.destroy();
+        
+        // 清除会话
+        req.session.destroy();
+        
+        res.json({ message: '账号已成功注销' });
+    } catch (error) {
+        console.error('注销账号失败:', error);
+        res.status(500).json({ message: '服务器错误' });
+    }
+});
+
 app.use('/api', apiRouter);
 
 // 删除番茄钟路由

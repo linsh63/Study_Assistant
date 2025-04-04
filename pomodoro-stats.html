@@ -244,7 +244,8 @@
     
     <script>
         // API URL
-        const API_URL = 'http://localhost:3000/api';
+        // 添加API_URL常量
+        const API_URL = '/api';
         let currentUser = null;
         let allTasks = [];
         let currentDateRange = 'day';
@@ -266,178 +267,89 @@
         let focusTimeChart;
         let completionRateChart;
         
-        // 检查用户是否已登录
+        // 检查用户登录状态
         async function checkLogin() {
             try {
                 const response = await fetch(`${API_URL}/me`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
                     credentials: 'include'
                 });
                 
                 if (!response.ok) {
-                    window.location.href = 'login.html';
+                    console.log('用户未登录，跳转到登录页面');
+                    window.location.href = 'login.html?redirect=pomodoro-stats.html';
                     return false;
                 }
                 
-                const user = await response.json();
-                currentUser = user;
+                const userData = await response.json();
+                currentUser = userData;
+                console.log('当前登录用户:', currentUser);
+                
+                // 更新用户信息显示
+                if (document.getElementById('user-name')) {
+                    document.getElementById('user-name').textContent = currentUser.username;
+                }
+                
                 return true;
             } catch (error) {
                 console.error('检查登录状态失败:', error);
-                window.location.href = 'login.html';
+                window.location.href = 'login.html?redirect=pomodoro-stats.html';
                 return false;
             }
         }
 
-        // 获取任务数据
+        // 从服务器获取任务数据
         async function fetchTasks() {
             try {
-                console.log('开始获取任务数据...');
+                console.log('开始从服务器获取任务数据...');
                 
-                // 尝试从API获取数据
+                // 从API获取任务数据
                 const response = await fetch(`${API_URL}/tasks`, {
-                    credentials: 'include',
+                    method: 'GET',
                     headers: {
-                        'Accept': 'application/json'
-                    }
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include'
                 });
                 
-                let tasksArray = [];
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('从API获取到的原始任务数据:', data);
-                    
-                    // 确保数据是数组格式
-                    if (Array.isArray(data)) {
-                        tasksArray = data;
-                    } else if (data && typeof data === 'object') {
-                        // 如果返回的是对象而不是数组，尝试提取任务数组
-                        if (data.tasks && Array.isArray(data.tasks)) {
-                            tasksArray = data.tasks;
-                        } else if (data.data && Array.isArray(data.data)) {
-                            tasksArray = data.data;
-                        }
-                    }
-                } else {
-                    console.warn('API请求失败，尝试从本地存储获取数据');
+                if (!response.ok) {
+                    throw new Error(`服务器响应错误: ${response.status} ${response.statusText}`);
                 }
                 
-                // 如果API获取失败或没有数据，尝试从localStorage获取
-                if (tasksArray.length === 0) {
-                    try {
-                        const localTasks = JSON.parse(localStorage.getItem('pomodoroTasks') || '[]');
-                        console.log('从localStorage获取到的任务:', localTasks);
-                        
-                        if (localTasks && localTasks.length > 0) {
-                            tasksArray = localTasks;
-                        }
-                    } catch (e) {
-                        console.error('读取本地存储任务失败:', e);
-                    }
-                }
+                const tasks = await response.json();
+                console.log(`从服务器获取到 ${tasks.length} 条任务记录`);
                 
-                console.log('处理前的任务数组:', tasksArray);
+                // 更新全局任务数据
+                allTasks = tasks;
                 
-                // 按照新的要求过滤任务
-                const filteredTasks = tasksArray.filter(task => {
-                    // 1. 不统计休息模式的任务
-                    if (task.isBreakMode) return false;
-                    
-                    // 2. 必须是已经开始了的任务
-                    if (!task.startTime) return false;
-                    
-                    // 3. 只统计已完成或已放弃的任务
-                    // 已完成：倒计时为0，状态为completed
-                    const isCompleted = task.status === 'completed';
-                    
-                    // 已放弃：用户按下重置按钮
-                    const isAbandoned = 
-                        task.status === 'abandoned' || 
-                        task.status === 'reset' ||
-                        task.isReset === true || 
-                        task.wasReset === true;
-                    
-                    // 只保留已完成或已放弃的任务
-                    return isCompleted || isAbandoned;
-                }).map(task => {
-                    // 标准化任务状态
-                    const newTask = {...task};
-                    
-                    // 明确定义已完成任务：状态为completed
-                    const isCompleted = task.status === 'completed';
-                    
-                    // 设置标准化状态
-                    if (isCompleted) {
-                        newTask.status = 'completed';
-                    } else {
-                        newTask.status = 'abandoned';
-                    }
-                    
-                    return newTask;
-                });
+                // 同时更新本地存储，作为备份
+                localStorage.setItem('pomodoroTasks', JSON.stringify(tasks));
                 
-                console.log('过滤后的任务数组:', filteredTasks);
-                
-                allTasks = filteredTasks;
-                return allTasks;
+                return tasks;
             } catch (error) {
-                console.error('获取任务数据出错:', error);
+                console.error('从服务器获取任务数据失败:', error);
                 
-                // 出错时尝试从localStorage获取
+                // 尝试从本地存储获取任务数据作为备份
+                console.log('尝试从本地存储获取任务数据...');
                 try {
                     const localTasks = JSON.parse(localStorage.getItem('pomodoroTasks') || '[]');
-                    console.log('从localStorage获取到的任务:', localTasks);
+                    console.log(`从本地存储获取到 ${localTasks.length} 条任务记录`);
                     
-                    if (localTasks && localTasks.length > 0) {
-                        // 按照新的要求过滤任务
-                        const filteredTasks = localTasks.filter(task => {
-                            // 1. 不统计休息模式的任务
-                            if (task.isBreakMode) return false;
-                            
-                            // 2. 必须是已经开始了的任务
-                            if (!task.startTime) return false;
-                            
-                            // 3. 只统计已完成或已放弃的任务
-                            // 已完成：倒计时为0，状态为completed
-                            const isCompleted = task.status === 'completed';
-                            
-                            // 已放弃：用户按下重置按钮
-                            const isAbandoned = 
-                                task.status === 'abandoned' || 
-                                task.status === 'reset' ||
-                                task.isReset === true || 
-                                task.wasReset === true;
-                            
-                            // 只保留已完成或已放弃的任务
-                            return isCompleted || isAbandoned;
-                        }).map(task => {
-                            // 标准化任务状态
-                            const newTask = {...task};
-                            
-                            // 明确定义已完成任务：状态为completed
-                            const isCompleted = task.status === 'completed';
-                            
-                            // 设置标准化状态
-                            if (isCompleted) {
-                                newTask.status = 'completed';
-                            } else {
-                                newTask.status = 'abandoned';
-                            }
-                            
-                            return newTask;
-                        });
-                        
-                        allTasks = filteredTasks;
-                        return allTasks;
-                    }
-                } catch (e) {
-                    console.error('读取本地存储任务失败:', e);
+                    // 更新全局任务数据
+                    allTasks = localTasks;
+                    
+                    return localTasks;
+                } catch (localError) {
+                    console.error('从本地存储获取任务数据失败:', localError);
+                    
+                    taskListEl.innerHTML = `<div class="flex justify-center items-center h-40 text-red-500">
+                        <p>获取数据失败: ${error.message}</p>
+                    </div>`;
+                    return [];
                 }
-                
-                taskListEl.innerHTML = `<div class="flex justify-center items-center h-40 text-red-500">
-                    <p>获取数据失败: ${error.message}</p>
-                </div>`;
-                return [];
             }
         }
 

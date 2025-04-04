@@ -231,7 +231,7 @@
                 
                 if (response.ok) {
                     // 已登录，重定向到主页
-                    window.location.href = 'index.html';
+                    window.location.href = 'dashboard.html';
                 }
             } catch (error) {
                 console.error('检查登录状态失败:', error);
@@ -303,7 +303,7 @@
                 
                 // 注册成功，跳转到主页
                 setTimeout(() => {
-                    window.location.href = 'index.html';
+                    window.location.href = 'dashboard.html';
                 }, 1000);
             } catch (error) {
                 console.error('注册失败:', error);

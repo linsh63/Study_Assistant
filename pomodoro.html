@@ -367,6 +367,75 @@
             text-shadow: 0 2px 5px rgba(0,0,0,0.5);
         }
         
+        /* 数字时钟样式 */
+        .digital-clock {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            height: 220px;
+            margin-bottom: 2rem;
+        }
+        
+        .digital-unit {
+            position: relative;
+            width: 140px;
+            height: 200px;
+            background: #1e1e1e;
+            border-radius: 10px;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .digital-number {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10rem;
+            font-weight: bold;
+            color: #ddd;
+            text-shadow: 0 0 10px rgba(79, 70, 229, 0.7);
+        }
+        
+        .digital-colon {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 8rem;
+            font-weight: bold;
+            color: #ddd;
+            text-shadow: 0 0 10px rgba(79, 70, 229, 0.7);
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 49% {
+                opacity: 1;
+            }
+            50%, 100% {
+                opacity: 0.5;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .digital-clock {
+                height: 150px;
+                gap: 0.3rem;
+            }
+            
+            .digital-unit {
+                width: 70px;
+                height: 100px;
+            }
+            
+            .digital-number {
+                font-size: 5rem;
+            }
+            
+            .digital-colon {
+                font-size: 4rem;
+            }
+        }
+
         /* 按钮容器 */
         .control-buttons {
             display: flex;
@@ -652,12 +721,15 @@
                                 <h3 class="text-lg font-medium text-white mb-3">显示设置</h3>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-300 mb-2">计时器显示方式</label>
-                                    <div class="grid grid-cols-2 gap-2">
+                                    <div class="grid grid-cols-3 gap-2">
                                         <button id="flip-display" class="bg-indigo-600 text-white rounded-lg p-2 hover:bg-indigo-700">
                                             翻页显示
                                         </button>
                                         <button id="normal-display" class="bg-gray-700 text-white rounded-lg p-2 hover:bg-gray-600">
                                             普通显示
+                                        </button>
+                                        <button id="digital-display" class="bg-gray-700 text-white rounded-lg p-2 hover:bg-gray-600">
+                                            数字时钟
                                         </button>
                                     </div>
                                 </div>
@@ -790,7 +862,7 @@
             }
         }
 
-        // 初始化
+       // 初始化
         async function init() {
             // 首先检查登录状态
             const isLoggedIn = await checkLogin();
@@ -812,13 +884,17 @@
             uploadBgBtn.addEventListener('click', () => bgUploadInput.click());
             removeBgBtn.addEventListener('click', removeBackground);
             bgUploadInput.addEventListener('change', handleBgUpload);
-            // 添加显示模式按钮事件
-            document.getElementById('flip-display').addEventListener('click', () => {
+
+           // 添加显示模式按钮事件
+           document.getElementById('flip-display').addEventListener('click', () => {
                 document.getElementById('flip-display').classList.add('bg-indigo-600');
                 document.getElementById('flip-display').classList.remove('bg-gray-700');
                 document.getElementById('normal-display').classList.remove('bg-indigo-600');
                 document.getElementById('normal-display').classList.add('bg-gray-700');
+                document.getElementById('digital-display').classList.remove('bg-indigo-600');
+                document.getElementById('digital-display').classList.add('bg-gray-700');
                 settings.displayMode = 'flip';
+                updateTimerDisplay(); // 立即更新显示
             });
             
             document.getElementById('normal-display').addEventListener('click', () => {
@@ -826,7 +902,21 @@
                 document.getElementById('normal-display').classList.remove('bg-gray-700');
                 document.getElementById('flip-display').classList.remove('bg-indigo-600');
                 document.getElementById('flip-display').classList.add('bg-gray-700');
+                document.getElementById('digital-display').classList.remove('bg-indigo-600');
+                document.getElementById('digital-display').classList.add('bg-gray-700');
                 settings.displayMode = 'normal';
+                updateTimerDisplay(); // 立即更新显示
+            });
+
+            document.getElementById('digital-display').addEventListener('click', () => {
+                document.getElementById('digital-display').classList.add('bg-indigo-600');
+                document.getElementById('digital-display').classList.remove('bg-gray-700');
+                document.getElementById('flip-display').classList.remove('bg-indigo-600');
+                document.getElementById('flip-display').classList.add('bg-gray-700');
+                document.getElementById('normal-display').classList.remove('bg-indigo-600');
+                document.getElementById('normal-display').classList.add('bg-gray-700');
+                settings.displayMode = 'digital';
+                updateTimerDisplay(); // 立即更新显示
             });
             
             workTimeSelect.addEventListener('change', function() {
@@ -886,7 +976,6 @@
         }
         
         // 更新计时器显示
-        // 更新计时器显示
         function updateTimerDisplay() {
             const minutes = Math.floor(remainingSeconds / 60);
             const seconds = remainingSeconds % 60;
@@ -896,8 +985,111 @@
             const secTens = Math.floor(seconds / 10);
             const secOnes = seconds % 10;
             
-            if (settings.displayMode === 'flip') {
+            // 根据显示模式选择不同的显示方法
+            if (settings.displayMode === 'digital') {
+                // 数字时钟显示模式
+                // 首先检查是否需要创建数字时钟元素
+                let digitalClock = document.querySelector('.digital-clock');
+                if (!digitalClock) {
+                    // 创建数字时钟元素
+                    const timerDisplay = document.getElementById('timer-display');
+                    timerDisplay.innerHTML = ''; // 清空现有内容
+                    
+                    digitalClock = document.createElement('div');
+                    digitalClock.className = 'digital-clock';
+                    
+                    // 分钟十位
+                    const minTensUnit = document.createElement('div');
+                    minTensUnit.className = 'digital-unit';
+                    minTensUnit.innerHTML = `<div class="digital-number" id="digital-min-tens">${minTens}</div>`;
+                    
+                    // 分钟个位
+                    const minOnesUnit = document.createElement('div');
+                    minOnesUnit.className = 'digital-unit';
+                    minOnesUnit.innerHTML = `<div class="digital-number" id="digital-min-ones">${minOnes}</div>`;
+                    
+                    // 冒号
+                    const colonDiv = document.createElement('div');
+                    colonDiv.className = 'digital-colon';
+                    colonDiv.textContent = ':';
+                    
+                    // 秒钟十位
+                    const secTensUnit = document.createElement('div');
+                    secTensUnit.className = 'digital-unit';
+                    secTensUnit.innerHTML = `<div class="digital-number" id="digital-sec-tens">${secTens}</div>`;
+                    
+                    // 秒钟个位
+                    const secOnesUnit = document.createElement('div');
+                    secOnesUnit.className = 'digital-unit';
+                    secOnesUnit.innerHTML = `<div class="digital-number" id="digital-sec-ones">${secOnes}</div>`;
+                    
+                    // 添加到数字时钟容器
+                    digitalClock.appendChild(minTensUnit);
+                    digitalClock.appendChild(minOnesUnit);
+                    digitalClock.appendChild(colonDiv);
+                    digitalClock.appendChild(secTensUnit);
+                    digitalClock.appendChild(secOnesUnit);
+                    
+                    // 添加到计时器显示区域
+                    timerDisplay.appendChild(digitalClock);
+                } else {
+                    // 更新现有数字时钟
+                    document.getElementById('digital-min-tens').textContent = minTens;
+                    document.getElementById('digital-min-ones').textContent = minOnes;
+                    document.getElementById('digital-sec-tens').textContent = secTens;
+                    document.getElementById('digital-sec-ones').textContent = secOnes;
+                }
+            } else if (settings.displayMode === 'flip') {
                 // 翻页显示模式
+                // 首先检查是否需要创建翻页时钟元素
+                let flipClock = document.querySelector('.flip-clock');
+                if (!flipClock) {
+                    // 创建翻页时钟元素
+                    const timerDisplay = document.getElementById('timer-display');
+                    timerDisplay.innerHTML = ''; // 清空现有内容
+                    
+                    // 使用原始的翻页时钟HTML结构
+                    timerDisplay.innerHTML = `
+                        <div class="flip-clock">
+                            <div class="flip-card" id="minute-tens">
+                                <div class="flip-card-wrapper">
+                                    <div class="flip-card-face top">${minTens}</div>
+                                    <div class="flip-card-face bottom">${minTens}</div>
+                                    <div class="flip-card-face next">${minTens}</div>
+                                </div>
+                            </div>
+                            <div class="flip-card" id="minute-ones">
+                                <div class="flip-card-wrapper">
+                                    <div class="flip-card-face top">${minOnes}</div>
+                                    <div class="flip-card-face bottom">${minOnes}</div>
+                                    <div class="flip-card-face next">${minOnes}</div>
+                                </div>
+                            </div>
+                            <div class="colon">:</div>
+                            <div class="flip-card" id="second-tens">
+                                <div class="flip-card-wrapper">
+                                    <div class="flip-card-face top">${secTens}</div>
+                                    <div class="flip-card-face bottom">${secTens}</div>
+                                    <div class="flip-card-face next">${secTens}</div>
+                                </div>
+                            </div>
+                            <div class="flip-card" id="second-ones">
+                                <div class="flip-card-wrapper">
+                                    <div class="flip-card-face top">${secOnes}</div>
+                                    <div class="flip-card-face bottom">${secOnes}</div>
+                                    <div class="flip-card-face next">${secOnes}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // 重新获取元素引用
+                    minuteTens = document.getElementById('minute-tens');
+                    minuteOnes = document.getElementById('minute-ones');
+                    secondTens = document.getElementById('second-tens');
+                    secondOnes = document.getElementById('second-ones');
+                }
+                
                 // 更新分钟十位数
                 if (currentDisplay.minuteTens !== minTens.toString()) {
                     flipCard(minuteTens, minTens);
@@ -922,6 +1114,56 @@
                     currentDisplay.secondOnes = secOnes.toString();
                 }
             } else {
+                // 普通显示模式
+                // 首先检查是否需要创建普通时钟元素
+                let normalClock = document.querySelector('.flip-clock:not(.digital-clock)');
+                if (!normalClock) {
+                    // 创建普通时钟元素（复用翻页时钟的HTML结构）
+                    const timerDisplay = document.getElementById('timer-display');
+                    timerDisplay.innerHTML = ''; // 清空现有内容
+                    
+                    // 使用原始的翻页时钟HTML结构
+                    timerDisplay.innerHTML = `
+                        <div class="flip-clock">
+                            <div class="flip-card" id="minute-tens">
+                                <div class="flip-card-wrapper">
+                                    <div class="flip-card-face top">${minTens}</div>
+                                    <div class="flip-card-face bottom">${minTens}</div>
+                                    <div class="flip-card-face next">${minTens}</div>
+                                </div>
+                            </div>
+                            <div class="flip-card" id="minute-ones">
+                                <div class="flip-card-wrapper">
+                                    <div class="flip-card-face top">${minOnes}</div>
+                                    <div class="flip-card-face bottom">${minOnes}</div>
+                                    <div class="flip-card-face next">${minOnes}</div>
+                                </div>
+                            </div>
+                            <div class="colon">:</div>
+                            <div class="flip-card" id="second-tens">
+                                <div class="flip-card-wrapper">
+                                    <div class="flip-card-face top">${secTens}</div>
+                                    <div class="flip-card-face bottom">${secTens}</div>
+                                    <div class="flip-card-face next">${secTens}</div>
+                                </div>
+                            </div>
+                            <div class="flip-card" id="second-ones">
+                                <div class="flip-card-wrapper">
+                                    <div class="flip-card-face top">${secOnes}</div>
+                                    <div class="flip-card-face bottom">${secOnes}</div>
+                                    <div class="flip-card-face next">${secOnes}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // 重新获取元素引用
+                    minuteTens = document.getElementById('minute-tens');
+                    minuteOnes = document.getElementById('minute-ones');
+                    secondTens = document.getElementById('second-tens');
+                    secondOnes = document.getElementById('second-ones');
+                }
+                
                 // 普通显示模式，直接更新数字
                 const cards = [
                     { element: minuteTens, value: minTens },
@@ -951,8 +1193,8 @@
             }
         }
         
-                // 翻页动画
-                function flipCard(card, newValue) {
+        // 翻页动画
+        function flipCard(card, newValue) {
             const wrapper = card.querySelector('.flip-card-wrapper');
             const topFace = wrapper.querySelector('.top');
             const bottomFace = wrapper.querySelector('.bottom');
@@ -1023,6 +1265,10 @@
                 
                 console.log('记录任务开始:', taskData);
                 
+                // 保存到本地存储作为备份
+                saveTaskToLocalStorage(taskData);
+                
+                // 发送到服务器
                 const response = await fetch(`${API_URL}/tasks`, {
                     method: 'POST',
                     headers: {
@@ -1033,23 +1279,13 @@
                 });
                 
                 if (!response.ok) {
-                    console.error('记录任务开始失败');
-                    // 保存到本地存储作为备份
-                    saveTaskToLocalStorage(taskData);
+                    console.error('记录任务开始失败:', response.status, response.statusText);
                 } else {
                     console.log('任务开始记录已保存到服务器');
                 }
             } catch (error) {
                 console.error('记录任务开始出错:', error);
-                // 出错时保存到本地存储
-                saveTaskToLocalStorage({
-                    taskId: currentTaskId,
-                    taskName: currentMode === 'work' ? settings.taskName : '休息一下...', // 确保休息模式使用固定名称
-                    startTime: new Date().toISOString(),
-                    plannedDuration: totalSeconds,
-                    status: 'in-progress',
-                    isBreakMode: currentMode === 'break' // 添加休息模式标记
-                });
+                // 出错时已经保存到本地存储，无需再次保存
             }
         }
         
@@ -1059,11 +1295,13 @@
             
             try {
                 const taskData = {
-                    taskId: currentTaskId,
                     pauseTime: new Date().toISOString(),
                     elapsedSeconds: totalSeconds - remainingSeconds
                 };
                 
+                console.log('记录任务暂停:', taskData);
+                
+                // 发送到服务器
                 const response = await fetch(`${API_URL}/tasks/${currentTaskId}/pause`, {
                     method: 'PUT',
                     headers: {
@@ -1074,14 +1312,38 @@
                 });
                 
                 if (!response.ok) {
-                    console.error('记录任务暂停失败');
+                    console.error('记录任务暂停失败:', response.status, response.statusText);
+                    
+                    // 保存到本地存储作为备份
+                    const existingTasks = JSON.parse(localStorage.getItem('pomodoroTasks') || '[]');
+                    const taskIndex = existingTasks.findIndex(task => task.taskId === currentTaskId);
+                    
+                    if (taskIndex !== -1) {
+                        existingTasks[taskIndex].status = 'paused';
+                        existingTasks[taskIndex].pauseTime = new Date().toISOString();
+                        existingTasks[taskIndex].elapsedSeconds = totalSeconds - remainingSeconds;
+                        localStorage.setItem('pomodoroTasks', JSON.stringify(existingTasks));
+                    }
+                } else {
+                    console.log('任务暂停记录已保存到服务器');
                 }
             } catch (error) {
                 console.error('记录任务暂停出错:', error);
+                
+                // 出错时保存到本地存储
+                const existingTasks = JSON.parse(localStorage.getItem('pomodoroTasks') || '[]');
+                const taskIndex = existingTasks.findIndex(task => task.taskId === currentTaskId);
+                
+                if (taskIndex !== -1) {
+                    existingTasks[taskIndex].status = 'paused';
+                    existingTasks[taskIndex].pauseTime = new Date().toISOString();
+                    existingTasks[taskIndex].elapsedSeconds = totalSeconds - remainingSeconds;
+                    localStorage.setItem('pomodoroTasks', JSON.stringify(existingTasks));
+                }
             }
         }
 
-                // 记录任务完成
+        // 记录任务完成
         async function recordTaskComplete() {
             if (!currentUser || !currentTaskId) return;
             
@@ -1091,19 +1353,43 @@
                 const actualDuration = totalSeconds; 
                 
                 const taskData = {
-                    taskId: currentTaskId,
-                    taskName: currentMode === 'work' ? settings.taskName : '休息一下...',
-                    startTime: taskStartTime.toISOString(),
                     endTime: endTime.toISOString(),
                     actualDuration: actualDuration,
-                    plannedDuration: totalSeconds,
                     status: 'completed', // 确保状态为已完成
-                    isBreakMode: currentMode === 'break',
                     remainingSeconds: 0 // 确保剩余时间为0
                 };
                 
                 console.log('记录任务完成:', taskData);
                 
+                // 保存到本地存储作为备份
+                const existingTasks = JSON.parse(localStorage.getItem('pomodoroTasks') || '[]');
+                const taskIndex = existingTasks.findIndex(task => task.taskId === currentTaskId);
+                
+                if (taskIndex !== -1) {
+                    existingTasks[taskIndex] = {
+                        ...existingTasks[taskIndex],
+                        endTime: endTime.toISOString(),
+                        actualDuration: actualDuration,
+                        status: 'completed',
+                        remainingSeconds: 0
+                    };
+                    localStorage.setItem('pomodoroTasks', JSON.stringify(existingTasks));
+                } else {
+                    // 如果在本地存储中找不到任务，创建一个新的完整记录
+                    saveTaskToLocalStorage({
+                        taskId: currentTaskId,
+                        taskName: currentMode === 'work' ? settings.taskName : '休息一下...',
+                        startTime: taskStartTime.toISOString(),
+                        endTime: endTime.toISOString(),
+                        actualDuration: actualDuration,
+                        plannedDuration: totalSeconds,
+                        status: 'completed',
+                        isBreakMode: currentMode === 'break',
+                        remainingSeconds: 0
+                    });
+                }
+                
+                // 发送到服务器
                 const response = await fetch(`${API_URL}/tasks/${currentTaskId}/complete`, {
                     method: 'PUT',
                     headers: {
@@ -1115,53 +1401,60 @@
                 
                 if (!response.ok) {
                     console.error('记录任务完成失败:', response.status, response.statusText);
-                    // 保存到本地存储作为备份
-                    saveTaskToLocalStorage(taskData);
                 } else {
                     console.log('任务完成记录已保存到服务器');
-                    // 即使成功也保存到本地存储，确保数据一致性
-                    saveTaskToLocalStorage(taskData);
                 }
             } catch (error) {
                 console.error('记录任务完成出错:', error);
-                // 出错时保存到本地存储
-                saveTaskToLocalStorage({
-                    taskId: currentTaskId,
-                    taskName: currentMode === 'work' ? settings.taskName : '休息一下...',
-                    startTime: taskStartTime.toISOString(),
-                    endTime: new Date().toISOString(),
-                    actualDuration: totalSeconds, // 使用计划的总时间
-                    plannedDuration: totalSeconds,
-                    status: 'completed',
-                    isBreakMode: currentMode === 'break',
-                    remainingSeconds: 0
-                });
+                // 出错时已经保存到本地存储，无需再次保存
             }
         }
 
-               // 记录任务放弃
-               async function recordTaskAbandoned() {
+        // 记录任务放弃
+        async function recordTaskAbandoned() {
             if (!currentUser || !currentTaskId || !taskStartTime) return;
             
             try {
                 const elapsedSeconds = totalSeconds - remainingSeconds;
                 
                 const taskData = {
-                    taskId: currentTaskId,
-                    taskName: currentMode === 'work' ? settings.taskName : '休息一下...',
-                    startTime: taskStartTime.toISOString(),
                     endTime: new Date().toISOString(),
                     actualDuration: elapsedSeconds, // 已经过的时间
-                    plannedDuration: totalSeconds, // 计划时间
                     status: 'abandoned',
-                    isBreakMode: currentMode === 'break',
-                    remainingSeconds: remainingSeconds, // 记录剩余时间
-                    elapsedSeconds: elapsedSeconds, // 记录已经过时间
-                    isReset: true // 标记为重置
+                    remainingSeconds: remainingSeconds // 记录剩余时间
                 };
                 
                 console.log('记录任务放弃:', taskData);
                 
+                // 保存到本地存储作为备份
+                const existingTasks = JSON.parse(localStorage.getItem('pomodoroTasks') || '[]');
+                const taskIndex = existingTasks.findIndex(task => task.taskId === currentTaskId);
+                
+                if (taskIndex !== -1) {
+                    existingTasks[taskIndex] = {
+                        ...existingTasks[taskIndex],
+                        endTime: taskData.endTime,
+                        actualDuration: taskData.actualDuration,
+                        status: 'abandoned',
+                        remainingSeconds: remainingSeconds
+                    };
+                    localStorage.setItem('pomodoroTasks', JSON.stringify(existingTasks));
+                } else {
+                    // 如果在本地存储中找不到任务，创建一个新的完整记录
+                    saveTaskToLocalStorage({
+                        taskId: currentTaskId,
+                        taskName: currentMode === 'work' ? settings.taskName : '休息一下...',
+                        startTime: taskStartTime.toISOString(),
+                        endTime: taskData.endTime,
+                        actualDuration: elapsedSeconds,
+                        plannedDuration: totalSeconds,
+                        status: 'abandoned',
+                        isBreakMode: currentMode === 'break',
+                        remainingSeconds: remainingSeconds
+                    });
+                }
+                
+                // 发送到服务器
                 const response = await fetch(`${API_URL}/tasks/${currentTaskId}/abandon`, {
                     method: 'PUT',
                     headers: {
@@ -1172,30 +1465,13 @@
                 });
                 
                 if (!response.ok) {
-                    console.error('记录任务放弃失败');
-                    // 保存到本地存储作为备份
-                    saveTaskToLocalStorage(taskData);
+                    console.error('记录任务放弃失败:', response.status, response.statusText);
                 } else {
                     console.log('任务放弃记录已保存到服务器');
-                    // 即使成功也保存到本地存储
-                    saveTaskToLocalStorage(taskData);
                 }
             } catch (error) {
                 console.error('记录任务放弃出错:', error);
-                // 出错时保存到本地存储
-                saveTaskToLocalStorage({
-                    taskId: currentTaskId,
-                    taskName: currentMode === 'work' ? settings.taskName : '休息一下...',
-                    startTime: taskStartTime.toISOString(),
-                    endTime: new Date().toISOString(),
-                    actualDuration: totalSeconds - remainingSeconds,
-                    plannedDuration: totalSeconds,
-                    status: 'abandoned',
-                    isBreakMode: currentMode === 'break',
-                    remainingSeconds: remainingSeconds,
-                    elapsedSeconds: totalSeconds - remainingSeconds,
-                    isReset: true
-                });
+                // 出错时已经保存到本地存储，无需再次保存
             }
         }
 
@@ -1398,17 +1674,84 @@
             }
             
             // 更新显示模式按钮状态
-            if (settings.displayMode === 'flip') {
-                document.getElementById('flip-display').classList.add('bg-indigo-600');
-                document.getElementById('flip-display').classList.remove('bg-gray-700');
-                document.getElementById('normal-display').classList.remove('bg-indigo-600');
-                document.getElementById('normal-display').classList.add('bg-gray-700');
-            } else {
-                document.getElementById('normal-display').classList.add('bg-indigo-600');
-                document.getElementById('normal-display').classList.remove('bg-gray-700');
-                document.getElementById('flip-display').classList.remove('bg-indigo-600');
-                document.getElementById('flip-display').classList.add('bg-gray-700');
+            document.getElementById('flip-display').classList.remove('bg-indigo-600', 'bg-gray-700');
+            document.getElementById('normal-display').classList.remove('bg-indigo-600', 'bg-gray-700');
+            document.getElementById('digital-display').classList.remove('bg-indigo-600', 'bg-gray-700');
+            
+            document.getElementById('flip-display').classList.add(settings.displayMode === 'flip' ? 'bg-indigo-600' : 'bg-gray-700');
+            document.getElementById('normal-display').classList.add(settings.displayMode === 'normal' ? 'bg-indigo-600' : 'bg-gray-700');
+            document.getElementById('digital-display').classList.add(settings.displayMode === 'digital' ? 'bg-indigo-600' : 'bg-gray-700');
+        }
+
+                // 保存任务到数据库
+                async function saveTaskToDatabase(task) {
+            try {
+                const response = await fetch(`${API_URL}/pomodoro/tasks`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(task)
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('任务保存成功:', result);
+                    
+                    // 更新本地任务，标记为已同步
+                    task.synced = true;
+                    task.id = result.id || task.id; // 使用服务器返回的ID
+                    
+                    // 更新本地存储
+                    updateLocalStorage();
+                    
+                    return result;
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    console.error('保存任务失败:', errorData);
+                    throw new Error(errorData.message || '保存任务到数据库失败');
+                }
+            } catch (error) {
+                console.error('保存任务到数据库出错:', error);
+                // 即使保存到数据库失败，也要保存到本地存储
+                updateLocalStorage();
+                return null;
             }
+        }
+
+                // 在任务完成或放弃时调用
+                function finishTask(status) {
+            if (!currentTask) return;
+            
+            // 更新任务状态
+            currentTask.status = status;
+            currentTask.endTime = new Date().toISOString();
+            
+            if (status === 'completed') {
+                // 计算实际持续时间（秒）
+                currentTask.actualDuration = currentTask.plannedDuration;
+                showToast('success', '恭喜！任务完成！');
+            } else {
+                // 已放弃任务
+                currentTask.actualDuration = currentTask.plannedDuration - timerSeconds;
+                showToast('warning', '任务已放弃');
+            }
+            
+            // 保存到任务历史
+            tasks.push(currentTask);
+            
+            // 保存到数据库
+            saveTaskToDatabase(currentTask).catch(error => {
+                console.error('保存任务到数据库失败:', error);
+                showToast('error', '同步到云端失败，已保存到本地');
+            });
+            
+            // 重置当前任务
+            resetTimer();
+            updateLocalStorage();
+            renderTaskHistory();
         }
         
         // 关闭设置面板
