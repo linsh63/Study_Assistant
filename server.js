@@ -8,11 +8,16 @@ const { sequelize, User, Course } = require('./models');
 // 删除百度OCR API相关依赖
 const multer = require('multer');
 const fs = require('fs');
-// 删除axios引用
-const axios = require('axios');
+// 删除mongoose依赖
+// const mongoose = require('mongoose');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// 删除MongoDB连接代码
+// mongoose.connect('mongodb://localhost:27017/pomodoro')
+// .then(() => console.log('MongoDB连接成功'))
+// .catch(err => console.error('MongoDB连接失败:', err));
 
 // 设置文件上传
 const upload = multer({ 
@@ -276,6 +281,10 @@ apiRouter.delete('/delete-account', async (req, res) => {
     }
 });
 app.use('/api', apiRouter);
+
+// 删除番茄钟路由
+// const pomodoroRoutesModule = require('./server/routes/pomodoro');
+// app.use('/api/pomodoro', pomodoroRoutesModule);
 
 // 启动服务器
 async function startServer() {
