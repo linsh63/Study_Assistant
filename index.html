@@ -821,11 +821,7 @@
         /* Responsive styles */
         @media (max-width: 992px) {
             .main-content {
-                grid-template-columns: 1fr;
-            }
-            
-            .sidebar {
-                order: 2;
+                display: block;
             }
         }
 
@@ -844,6 +840,20 @@
                 flex-direction: column;
                 gap: 0;
             }
+        }
+        
+        /* 修改 main-content 样式，移除网格布局 */
+        .main-content {
+            display: block;
+        }
+        
+        /* 调整 content 样式，使其占据全宽 */
+        .content {
+            width: 100%;
+            padding: 20px;
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
         }
     </style>
 </head>
@@ -886,84 +896,15 @@
         </header>
 
         <div class="main-content">
-            <div class="sidebar">
-                <h2>筛选与统计</h2>
-                
-                <div class="filter-group">
-                    <h3>星期</h3>
-                    <div class="filter-options">
-                        <div class="filter-option">
-                            <input type="checkbox" id="monday" checked>
-                            <label for="monday">星期一</label>
-                        </div>
-                        <div class="filter-option">
-                            <input type="checkbox" id="tuesday" checked>
-                            <label for="tuesday">星期二</label>
-                        </div>
-                        <div class="filter-option">
-                            <input type="checkbox" id="wednesday" checked>
-                            <label for="wednesday">星期三</label>
-                        </div>
-                        <div class="filter-option">
-                            <input type="checkbox" id="thursday" checked>
-                            <label for="thursday">星期四</label>
-                        </div>
-                        <div class="filter-option">
-                            <input type="checkbox" id="friday" checked>
-                            <label for="friday">星期五</label>
-                        </div>
-                        <div class="filter-option">
-                            <input type="checkbox" id="saturday">
-                            <label for="saturday">星期六</label>
-                        </div>
-                        <div class="filter-option">
-                            <input type="checkbox" id="sunday">
-                            <label for="sunday">星期日</label>
-                        </div>
+            <!-- 删除侧边栏代码，直接显示内容区域 -->
+            <div class="content">
+                <div class="content-header">
+                    <h2>我的课程表</h2>
+                    <div class="search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="搜索课程、教师或地点..." id="searchInput">
                     </div>
                 </div>
-                
-                <div class="filter-group">
-                    <h3>课程类型</h3>
-                    <div class="filter-options">
-                        <div class="filter-option">
-                            <input type="checkbox" id="lecture" checked>
-                            <label for="lecture">讲座</label>
-                        </div>
-                        <div class="filter-option">
-                            <input type="checkbox" id="seminar" checked>
-                            <label for="seminar">研讨</label>
-                        </div>
-                        <div class="filter-option">
-                            <input type="checkbox" id="lab" checked>
-                            <label for="lab">实验</label>
-                        </div>
-                        <div class="filter-option">
-                            <input type="checkbox" id="exercise" checked>
-                            <label for="exercise">练习</label>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="filter-group">
-                    <h3>统计数据</h3>
-                    <div style="padding: 10px 0;">
-                        <p>总课程数: <strong id="totalCourses">0</strong></p>
-                        <p>本周课时: <strong id="weeklyHours">0</strong></p>
-                        <p>教师人数: <strong id="teachersCount">0</strong></p>
-                    </div>
-                </div>
-            </div>
-
-           <!-- 在content div中添加课表视图 -->
-    <div class="content">
-        <div class="content-header">
-            <h2>我的课程表</h2>
-            <div class="search-bar">
-                <i class="fas fa-search"></i>
-                <input type="text" placeholder="搜索课程或教师..." id="searchInput">
-            </div>
-        </div>
     
     <div class="schedule-view">
         <div class="view-option" data-view="list">列表视图</div>
@@ -1072,7 +1013,7 @@
                         <label for="batchCourseType">课程类型 *</label>
                         <select class="form-control" id="batchCourseType" required>
                             <option value="">选择类型</option>
-                            <option value="lecture">讲座</option>
+                            <option value="lecture">理论</option>
                             <option value="seminar">研讨</option>
                             <option value="lab">实验</option>
                             <option value="exercise">练习</option>
@@ -1183,7 +1124,7 @@
                             <label for="courseType">课程类型 *</label>
                             <select class="form-control" id="courseType" required>
                                 <option value="">选择类型</option>
-                                <option value="lecture">讲座</option>
+                                <option value="lecture">理论</option>
                                 <option value="seminar">研讨</option>
                                 <option value="lab">实验</option>
                                 <option value="exercise">练习</option>
@@ -1336,6 +1277,51 @@
                 note: ""
             }
         ];
+            // 在脚本开始处添加这段代码
+            // 创建虚拟统计元素，防止null引用错误
+            document.addEventListener('DOMContentLoaded', function() {
+                // 检查统计元素是否存在，如果不存在则创建虚拟元素
+                if (!document.getElementById('totalCourses')) {
+                    const virtualStats = document.createElement('div');
+                    virtualStats.style.display = 'none';
+                    
+                    const totalCourses = document.createElement('span');
+                    totalCourses.id = 'totalCourses';
+                    
+                    const weeklyHours = document.createElement('span');
+                    weeklyHours.id = 'weeklyHours';
+                    
+                    const teachersCount = document.createElement('span');
+                    teachersCount.id = 'teachersCount';
+                    
+                    virtualStats.appendChild(totalCourses);
+                    virtualStats.appendChild(weeklyHours);
+                    virtualStats.appendChild(teachersCount);
+                    
+                    document.body.appendChild(virtualStats);
+                }
+                
+                // 检查筛选复选框是否存在
+                const weekdayIds = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+                const typeIds = ['lecture', 'seminar', 'lab', 'exercise'];
+                
+                // 创建虚拟筛选元素
+                const createVirtualFilters = (ids) => {
+                    ids.forEach(id => {
+                        if (!document.getElementById(id)) {
+                            const checkbox = document.createElement('input');
+                            checkbox.type = 'checkbox';
+                            checkbox.id = id;
+                            checkbox.checked = true;
+                            checkbox.style.display = 'none';
+                            document.body.appendChild(checkbox);
+                        }
+                    });
+                };
+                
+                createVirtualFilters(weekdayIds);
+                createVirtualFilters(typeIds);
+            });
 
         // DOM元素
         const addCourseBtn = document.getElementById('addCourseBtn');
@@ -1905,7 +1891,7 @@
 
         function getCourseTypeText(type) {
             const types = {
-                'lecture': '讲座',
+                'lecture': '理论',
                 'seminar': '研讨',
                 'lab': '实验',
                 'exercise': '练习',
@@ -2281,11 +2267,38 @@
             const searchTerm = e.target.value.toLowerCase();
             const filteredCourses = courses.filter(course => 
                 course.name.toLowerCase().includes(searchTerm) || 
-                course.teacher.toLowerCase().includes(searchTerm)
+                course.teacher.toLowerCase().includes(searchTerm) ||
+                course.location.toLowerCase().includes(searchTerm) ||
+                (course.code && course.code.toLowerCase().includes(searchTerm))
             );
             
             renderFilteredCourses(filteredCourses);
         });
+        
+        // 渲染筛选后的课程
+        function renderFilteredCourses(filteredCourses) {
+            // 保存当前筛选结果到临时变量
+            const tempCourses = courses;
+            
+            // 临时替换课程数据
+            courses = filteredCourses;
+            
+            // 更新当前视图
+            const activeView = document.querySelector('.view-option.active').dataset.view;
+            
+            // 更新列表视图
+            renderCourseTable();
+            
+            // 根据当前活动视图更新其他视图
+            if (activeView === 'week') {
+                renderWeekView();
+            } else if (activeView === 'day') {
+                renderDayView(currentDayIndex);
+            }
+            
+            // 恢复原始课程数据
+            courses = tempCourses;
+        }
     
         // 渲染课程表
         function renderCourseTable() {
