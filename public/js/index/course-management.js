@@ -1,5 +1,5 @@
 
-    // ... 保留原有代码 ...
+// ... 保留原有代码 ...
 
     // 视图切换
     document.querySelectorAll('.view-option').forEach((option) => {
@@ -44,7 +44,6 @@
     ];
     
     // 渲染周视图（课表）
-    // 渲染周视图（课表）
     function renderWeekView() {
         const timetableBody = document.getElementById('timetableBody');
         timetableBody.innerHTML = '';
@@ -73,11 +72,17 @@
                 coursesInSlot.forEach(course => {
                     const courseCard = document.createElement('div');
                     courseCard.className = 'course-card';
-                    courseCard.style.backgroundColor = `${course.color}20`; // 20是透明度
+                    courseCard.style.backgroundColor = `${course.color}20`;
                     courseCard.style.borderLeft = `4px solid ${course.color}`;
+                    
+                    // 只在有教师信息且不为"未指定"时显示教师字段
+                    const teacherInfo = course.teacher && course.teacher !== "未指定" 
+                        ? `<div class="course-info">${course.teacher}</div>` 
+                        : '';
                     
                     courseCard.innerHTML = `
                         <div class="course-name">${course.name}</div>
+                        ${teacherInfo}
                         <div class="course-location">${course.location}</div>
                         <div class="course-actions">
                             <div class="course-action" onclick="event.stopPropagation(); editCourse(${course.id})">
@@ -102,6 +107,67 @@
             
             timetableBody.appendChild(row);
         });
+    
+        // 恢复保存的样式设置
+        restoreStyleSettings();
+        
+        // 触发课程渲染完成事件
+        document.dispatchEvent(new CustomEvent('coursesRendered'));
+    }
+    
+    // 新增：恢复样式设置函数
+    function restoreStyleSettings() {
+        // 恢复周视图铺满单元格设置
+        const isFullCell = localStorage.getItem('fullCellMode') === 'true';
+        const fullCellToggle = document.getElementById('fullCellToggle');
+        if (fullCellToggle) {
+            fullCellToggle.checked = isFullCell;
+            const timetable = document.querySelector('.timetable');
+            if (isFullCell) {
+                timetable.classList.add('full-cell-mode');
+            } else {
+                timetable.classList.remove('full-cell-mode');
+            }
+        }
+        
+        // 恢复周视图字体大小设置
+        const isLargeFont = localStorage.getItem('largeFontMode') === 'true';
+        const largeFontToggle = document.getElementById('largeFontToggle');
+        if (largeFontToggle) {
+            largeFontToggle.checked = isLargeFont;
+            const timetable = document.querySelector('.timetable');
+            if (isLargeFont) {
+                timetable.classList.add('large-font-mode');
+            } else {
+                timetable.classList.remove('large-font-mode');
+            }
+        }
+        
+        // 恢复日视图铺满单元格设置
+        const isDayFullCell = localStorage.getItem('dayFullCellMode') === 'true';
+        const dayFullCellToggle = document.getElementById('dayFullCellToggle');
+        if (dayFullCellToggle) {
+            dayFullCellToggle.checked = isDayFullCell;
+            const daySchedule = document.querySelector('.day-schedule');
+            if (isDayFullCell) {
+                daySchedule.classList.add('full-cell-mode');
+            } else {
+                daySchedule.classList.remove('full-cell-mode');
+            }
+        }
+        
+        // 恢复日视图字体大小设置
+        const isDayLargeFont = localStorage.getItem('dayLargeFontMode') === 'true';
+        const dayLargeFontToggle = document.getElementById('dayLargeFontToggle');
+        if (dayLargeFontToggle) {
+            dayLargeFontToggle.checked = isDayLargeFont;
+            const daySchedule = document.querySelector('.day-schedule');
+            if (isDayLargeFont) {
+                daySchedule.classList.add('large-font-mode');
+            } else {
+                daySchedule.classList.remove('large-font-mode');
+            }
+        }
     }
     
     // 检查时间是否重叠
@@ -123,7 +189,7 @@
     }
     
     // 日视图相关
-    let currentDayIndex = 1; // 默认星期一
+    let currentDayIndex = new Date().getDay() || 7; // 获取当前是星期几，周日返回0，转换为7
     
     // 渲染日视图
     function renderDayView(dayIndex) {
@@ -165,8 +231,14 @@
                 courseCard.style.backgroundColor = `${course.color}20`;
                 courseCard.style.borderLeft = `4px solid ${course.color}`;
                 
+                // 只在有教师信息且不为"未指定"时显示教师字段
+                const teacherInfo = course.teacher && course.teacher !== "未指定" 
+                    ? `<div class="course-info">${course.teacher}</div>` 
+                    : '';
+                
                 courseCard.innerHTML = `
                     <div class="course-name">${course.name}</div>
+                    ${teacherInfo}
                     <div class="course-location">${course.location}</div>
                     <div class="course-actions">
                         <div class="course-action" onclick="event.stopPropagation(); editCourse(${course.id})">
@@ -242,3 +314,77 @@
     
     // 初始化页面
     fetchCourses();
+    
+    // 添加日视图样式切换事件监听
+    document.addEventListener('DOMContentLoaded', function() {
+        // 日视图铺满单元格切换
+        const dayFullCellToggle = document.getElementById('dayFullCellToggle');
+        if (dayFullCellToggle) {
+            dayFullCellToggle.addEventListener('change', function() {
+                const isChecked = this.checked;
+                localStorage.setItem('dayFullCellMode', isChecked);
+                const daySchedule = document.querySelector('.day-schedule');
+                if (isChecked) {
+                    daySchedule.classList.add('full-cell-mode');
+                } else {
+                    daySchedule.classList.remove('full-cell-mode');
+                }
+            });
+        }
+        
+        // 日视图大字体切换
+        const dayLargeFontToggle = document.getElementById('dayLargeFontToggle');
+        if (dayLargeFontToggle) {
+            dayLargeFontToggle.addEventListener('change', function() {
+                const isChecked = this.checked;
+                localStorage.setItem('dayLargeFontMode', isChecked);
+                const daySchedule = document.querySelector('.day-schedule');
+                if (isChecked) {
+                    daySchedule.classList.add('large-font-mode');
+                } else {
+                    daySchedule.classList.remove('large-font-mode');
+                }
+            });
+        }
+    });
+    
+    // 触发课程渲染完成事件
+    document.dispatchEvent(new CustomEvent('coursesRendered'));
+
+    // 获取所有可用的颜色
+    function getAllColors() {
+        const colors = getComputedStyle(document.documentElement)
+            .getPropertyValue('--course-colors')
+            .split(',')
+            .map(color => color.trim());
+        return colors;
+    }
+    
+    // 获取已使用的颜色
+    function getUsedColors() {
+        return courses.map(course => course.color);
+    }
+    
+    // 获取随机未使用的颜色
+    function getRandomUnusedColor() {
+        const allColors = getAllColors();
+        const usedColors = getUsedColors();
+        const unusedColors = allColors.filter(color => !usedColors.includes(color));
+        
+        // 如果所有颜色都已使用，则返回随机颜色
+        if (unusedColors.length === 0) {
+            return allColors[Math.floor(Math.random() * allColors.length)];
+        }
+        
+        // 返回随机未使用颜色
+        return unusedColors[Math.floor(Math.random() * unusedColors.length)];
+    }
+    
+    // 在添加新课程时调用
+    function addCourse(courseData) {
+        // ... 保留原有代码 ...
+        if (!courseData.color) {
+            courseData.color = getRandomUnusedColor();
+        }
+        // ... 保留原有代码 ...
+}

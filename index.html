@@ -91,8 +91,20 @@
     </div>
     
     <!-- 周视图 (课表视图) -->
+    <!-- 在周视图部分添加样式切换按钮 -->
     <div id="weekView">
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+            <label class="style-toggle">
+                <input type="checkbox" id="fullCellToggle">
+                铺满单元格
+            </label>
+            <label class="font-toggle">
+                <input type="checkbox" id="largeFontToggle">
+                大字体
+            </label>
+        </div>
         <div class="timetable-container">
+            <!-- 现有的表格代码 -->
             <table class="timetable">
                 <thead>
                     <tr>
@@ -115,6 +127,16 @@
     
     <!-- 日视图 -->
     <div id="dayView" style="display: none;">
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+            <label class="style-toggle">
+                <input type="checkbox" id="dayFullCellToggle">
+                铺满单元格
+            </label>
+            <label class="font-toggle">
+                <input type="checkbox" id="dayLargeFontToggle">
+                大字体
+            </label>
+        </div>
         <div class="day-selector">
             <button class="btn btn-outline day-nav" id="prevDay"><i class="fas fa-chevron-left"></i></button>
             <h3 id="currentDay">星期一</h3>
@@ -179,7 +201,7 @@
                     <div class="form-group">
                         <label>课程颜色</label>
                         <div class="color-picker">
-                            <div class="color-option selected" style="background-color: #4a6fa5;" data-color="#4a6fa5"></div>
+                            <div class="color-option" style="background-color: #4a6fa5;" data-color="#4a6fa5"></div>
                             <div class="color-option" style="background-color: #6c8fc7;" data-color="#6c8fc7"></div>
                             <div class="color-option" style="background-color: #ff7e5f;" data-color="#ff7e5f"></div>
                             <div class="color-option" style="background-color: #63b7af;" data-color="#63b7af"></div>
@@ -187,6 +209,19 @@
                             <div class="color-option" style="background-color: #f0a04b;" data-color="#f0a04b"></div>
                             <div class="color-option" style="background-color: #9e579d;" data-color="#9e579d"></div>
                             <div class="color-option" style="background-color: #574b90;" data-color="#574b90"></div>
+                            <!-- 新增颜色选项 -->
+                            <div class="color-option" style="background-color: #00b894;" data-color="#00b894"></div>
+                            <div class="color-option" style="background-color: #e17055;" data-color="#e17055"></div>
+                            <div class="color-option" style="background-color: #fdcb6e;" data-color="#fdcb6e"></div>
+                            <div class="color-option" style="background-color: #6c5ce7;" data-color="#6c5ce7"></div>
+                            <div class="color-option" style="background-color: #a8e6cf;" data-color="#a8e6cf"></div>
+                            <div class="color-option" style="background-color: #ff8b94;" data-color="#ff8b94"></div>
+                            <div class="color-option" style="background-color: #ffd3b6;" data-color="#ffd3b6"></div>
+                            <div class="color-option" style="background-color: #dcedc1;" data-color="#dcedc1"></div>
+                            <div class="color-option" style="background-color: #a8d8ea;" data-color="#a8d8ea"></div>
+                            <div class="color-option" style="background-color: #aa96da;" data-color="#aa96da"></div>
+                            <div class="color-option" style="background-color: #fcbad3;" data-color="#fcbad3"></div>
+                            <div class="color-option" style="background-color: #95e1d3;" data-color="#95e1d3"></div>
                         </div>
                         <input type="hidden" id="batchCourseColor" value="#4a6fa5">
                     </div>
@@ -399,9 +434,12 @@
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     
     <!-- 引入自定义JavaScript文件 -->
+    <!-- 在页面底部的脚本引用部分添加 -->
     <script src="public/js/index/utils.js"></script>
     <script src="public/js/index/modals.js"></script>
     <script src="public/js/index/course-management.js"></script>
     <script src="public/js/index/views.js"></script>
+    <script src="public/js/index/style-switcher.js"></script>
+    <script src="public/js/index/font-switcher.js"></script>
 </body>
 </html>

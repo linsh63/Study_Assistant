@@ -1,4 +1,3 @@
-
 :root {
     --primary-color: #4a6fa5;
     --secondary-color: #6c8fc7;
@@ -10,6 +9,11 @@
     --danger-color: #dc3545;
     --border-radius: 8px;
     --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    /* 课程可用颜色 */
+    --course-colors: #4a6fa5, #6c8fc7, #ff7e5f, #63b7af, #b5ea8c, 
+    #f0a04b, #9e579d, #574b90, #00b894, #e17055, 
+    #fdcb6e, #6c5ce7, #a8e6cf, #ff8b94, #ffd3b6, 
+    #dcedc1, #a8d8ea, #aa96da, #fcbad3, #95e1d3;
 }
 
 * {
@@ -422,14 +426,516 @@ header {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.course-card .course-name {
-    font-weight: 600;
-    margin-bottom: 5px;
+.course-card .course-actions {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    display: none;
 }
 
-.course-card .course-info {
-    font-size: 11px;
+.course-card:hover .course-actions {
+    display: flex;
+}
+
+.course-card .course-action {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-left: 3px;
+    font-size: 10px;
+}
+
+/* 日视图样式 */
+.day-selector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    gap: 15px;
+}
+
+/* 日视图铺满模式 */
+.day-schedule.full-cell-mode .time-slot {
+    padding: 0;
+}
+
+.day-schedule.full-cell-mode .slot-content {
+    padding: 0;
+    position: relative;
+}
+
+.day-schedule.full-cell-mode .course-card {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 8px;
+}
+
+/* 日视图大字体模式 */
+.day-schedule.large-font-mode .course-card .course-name {
+    font-size: 1.1rem !important;
+    font-weight: 600;
+    margin-bottom: 3px;
+}
+
+.day-schedule.large-font-mode .course-card .course-info {
+    font-size: 0.9rem !important;
     color: #666;
+    margin-bottom: 2px;
+    line-height: 1.2;
+}
+
+.day-schedule.large-font-mode .course-card .course-location {
+    font-size: 0.95rem !important;
+    color: #555;
+    line-height: 1.2;
+}
+
+.day-nav {
+    padding: 5px 10px;
+}
+
+.day-schedule {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.time-slot {
+    display: flex;
+    border: 1px solid #e0e0e0;
+    border-radius: var(--border-radius);
+}
+
+.time-label {
+    width: 100px;
+    padding: 15px;
+    background-color: #f5f7fa;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid #e0e0e0;
+}
+
+.slot-content {
+    flex: 1;
+    padding: 15px;
+    min-height: 80px;
+}
+
+/* 视图切换按钮样式 */
+.schedule-view {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.view-option {
+    padding: 8px 16px;
+    background-color: #f5f7fa;
+    border-radius: var(--border-radius);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.view-option.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.view-option:hover:not(.active) {
+    background-color: #e9ecef;
+}
+
+.view-option {
+    padding: 8px 16px;
+    background-color: #f5f7fa;
+    border-radius: var(--border-radius);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.view-option.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.view-option:hover:not(.active) {
+    background-color: #e9ecef;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+th, td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+th {
+    background-color: #f5f7fa;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+tr:hover {
+    background-color: #f8f9fa;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.action-btn {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.edit-btn {
+    background-color: rgba(255, 193, 7, 0.2);
+    color: var(--warning-color);
+}
+
+.edit-btn:hover {
+    background-color: var(--warning-color);
+    color: white;
+}
+
+.delete-btn {
+    background-color: rgba(220, 53, 69, 0.2);
+    color: var(--danger-color);
+}
+
+.delete-btn:hover {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.course-color {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 30px;
+}
+
+.page-btn {
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    cursor: pointer;
+    background-color: #f5f7fa;
+    transition: all 0.3s ease;
+}
+
+.page-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.page-btn:hover:not(.active) {
+    background-color: #e9ecef;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    width: 500px;
+    max-width: 90%;
+    padding: 25px;
+    animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.modal-header h3 {
+    font-size: 20px;
+    color: var(--primary-color);
+}
+
+.close-btn {
+    font-size: 24px;
+    cursor: pointer;
+    color: #777;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+    background-color: #f5f7fa;
+    color: var(--danger-color);
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #555;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: var(--border-radius);
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(74, 111, 165, 0.2);
+    outline: none;
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+/* 课程颜色选项扩展 */
+.color-picker {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 5px;
+}
+
+.color-option {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.color-option:hover {
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.color-option.selected {
+    border-color: var(--dark-color);
+    transform: scale(1.1);
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 30px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #333;
+    color: white;
+    padding: 15px 25px;
+    border-radius: var(--border-radius);
+    z-index: 1100;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: var(--box-shadow);
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.3s ease;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.toast i {
+    font-size: 20px;
+}
+
+.toast.success {
+    background-color: var(--success-color);
+}
+
+.toast.error {
+    background-color: var(--danger-color);
+}
+
+.toast.warning {
+    background-color: var(--warning-color);
+    color: var(--dark-color);
+}
+
+/* Responsive styles */
+@media (max-width: 992px) {
+    .main-content {
+        display: block;
+    }
+}
+
+@media (max-width: 768px) {
+    .content-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .search-bar {
+        width: 100%;
+    }
+    
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+}
+
+/* 修改 main-content 样式，移除网格布局 */
+.main-content {
+    display: block;
+}
+
+/* 调整 content 样式，使其占据全宽 */
+.content {
+    width: 100%;
+    padding: 20px;
+    background-color: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+
+/* 铺满模式下的样式 - 不包含字体大小设置 */
+.timetable.full-cell-mode td {
+    padding: 0;
+    position: relative;
+}
+
+.timetable.full-cell-mode .course-card {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 8px;
+}
+
+/* 样式切换按钮美化 */
+.style-toggle {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 15px;
+    background-color: #f5f7fa;
+    border-radius: var(--border-radius);
+    padding: 8px 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.style-toggle:hover {
+    background-color: #e9ecef;
+    transform: translateY(-2px);
+}
+
+.style-toggle input[type="checkbox"] {
+    margin-right: 8px;
+    width: 16px;
+    height: 16px;
 }
 
 .course-card .course-location {
@@ -811,6 +1317,67 @@ tr:hover {
     color: var(--dark-color);
 }
 
+/* 样式切换按钮和字体切换按钮 */
+.style-toggle, .font-toggle {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 15px;
+    background-color: #f5f7fa;
+    border-radius: var(--border-radius);
+    padding: 8px 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.style-toggle:hover, .font-toggle:hover {
+    background-color: #e9ecef;
+    transform: translateY(-2px);
+}
+
+.style-toggle input[type="checkbox"], .font-toggle input[type="checkbox"] {
+    margin-right: 8px;
+    width: 16px;
+    height: 16px;
+}
+
+/* 小字体模式（默认） */
+.course-card .course-name {
+    font-weight: 600;
+    margin-bottom: 5px;
+    font-size: 12px;
+}
+
+.course-card .course-info {
+    font-size: 11px;
+    color: #666;
+}
+
+.course-card .course-location {
+    margin-top: auto;
+    font-size: 11px;
+}
+
+/* 大字体模式 - 调整行距 */
+.large-font-mode .course-card .course-name {
+    font-size: 1.1rem !important;
+    font-weight: 600;
+    margin-bottom: 3px;  /* 减小底部间距 */
+}
+
+.large-font-mode .course-card .course-info {
+    font-size: 0.9rem !important;
+    color: #666;
+    margin-bottom: 2px;  /* 添加底部间距 */
+    line-height: 1.2;    /* 调整行高 */
+}
+
+.large-font-mode .course-card .course-location {
+    font-size: 0.95rem !important;
+    color: #555;
+    line-height: 1.2;    /* 调整行高 */
+}
+
 /* Responsive styles */
 @media (max-width: 992px) {
     .main-content {
@@ -833,18 +1400,4 @@ tr:hover {
         flex-direction: column;
         gap: 0;
     }
-}
-
-/* 修改 main-content 样式，移除网格布局 */
-.main-content {
-    display: block;
-}
-
-/* 调整 content 样式，使其占据全宽 */
-.content {
-    width: 100%;
-    padding: 20px;
-    background-color: white;
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
 }
