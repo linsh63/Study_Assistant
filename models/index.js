@@ -4,7 +4,7 @@ const path = require('path');
 // 创建数据库连接
 const sequelize = new Sequelize({
     dialect: 'sqlite',
-    storage: path.join(__dirname, '../database.sqlite'),
+    storage: path.join(__dirname, '../data/database.sqlite'),
     logging: false
 });
 
