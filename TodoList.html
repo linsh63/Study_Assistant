@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Todo List with Multiple Views</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="public/css/TodoList.css">
+<head>
+    <!-- 添加在现有样式链接之后 -->
+    <style>
+        /* 强制应用表格样式 */
+        #week-timeline table {
+            table-layout: fixed !important;
+            width: 100% !important;
+        }
+        
+        #week-timeline th:first-child,
+        #week-timeline td:first-child {
+            width: 60px !important;
+        }
+        
+        #week-timeline th:not(:first-child),
+        #week-timeline td:not(:first-child) {
+            width: calc((100% - 60px) / 7) !important;
+        }
+        
+        /* 简化星期和日期显示 */
+        .weekday-label {
+            font-size: 0.7rem;
+        }
+        
+        .date-number {
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto max-w-7xl px-4 py-8">
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <!-- 标题区 -->
+            <div class="bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between">
+                <h1 class="text-2xl font-bold text-white mb-2 sm:mb-0">高级任务管理系统</h1>
+                <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
+                    <div class="flex items-center bg-blue-800 rounded-full p-1">
+                        <button id="list-view-btn" class="view-switch-btn px-4 py-1 rounded-full text-sm text-white bg-blue-700">列表视图</button>
+                        <button id="day-view-btn" class="view-switch-btn px-4 py-1 rounded-full text-sm text-blue-100 hover:text-white">日视图</button>
+                        <button id="week-view-btn" class="view-switch-btn px-4 py-1 rounded-full text-sm text-blue-100 hover:text-white">周视图</button>
+                    </div>
+                    <div class="flex items-center">
+                        <span id="username" class="text-sm text-blue-100 mr-2"></span>
+                        <button id="homeBtn" class="px-3 py-1 text-sm bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-md">
+                            <i class="fas fa-home mr-1"></i> 主页
+                        </button>
+                    </div>
+                    <div id="task-count" class="text-blue-100 bg-blue-700 px-3 py-1 rounded-full text-sm">0 任务</div>
+                </div>
+            </div>
+            
+            <!-- 添加任务表单 -->
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex flex-col sm:flex-row gap-3 mb-3">
+                    <input 
+                        type="text" 
+                        id="task-input" 
+                        placeholder="添加新任务..." 
+                        class="flex-grow px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                    <input
+                        type="date"
+                        id="task-date"
+                        class="px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                    <input
+                        type="time"
+                        id="task-time"
+                        class="px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                    <select id="priority-select" class="px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="low">低优先级</option>
+                        <option value="medium">中优先级</option>
+                        <option value="high">高优先级</option>
+                    </select>
+                    <button 
+                        id="add-task-btn" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg transition duration-300 whitespace-nowrap flex-shrink-0"
+                    >
+                        <i class="fas fa-plus mr-2"></i>添加任务
+                    </button>
+                </div>
+                
+                <!-- 过滤选项 -->
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mt-4 space-y-2 sm:space-y-0">
+                    <div class="flex flex-wrap gap-2">
+                        <button data-filter="all" class="filter-btn active bg-blue-600 text-white px-4 py-1 rounded-full text-sm">全部</button>
+                        <button data-filter="active" class="filter-btn hover:bg-gray-200 px-4 py-1 rounded-full text-sm">进行中</button>
+                        <button data-filter="completed" class="filter-btn hover:bg-gray-200 px-4 py-1 rounded-full text-sm">已完成</button>
+                        <button data-filter="today" class="filter-btn hover:bg-gray-200 px-4 py-1 rounded-full text-sm">今天</button>
+                    </div>
+                    <div class="text-sm text-gray-600">
+                        <span id="current-date"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 列表视图 -->
+            <div id="list-view" class="view-transition view-visible">
+                <div id="task-list" class="divide-y divide-gray-200">
+                    <!-- 任务将通过JavaScript动态添加到这里 -->
+                    <div id="empty-state" class="p-8 text-center text-gray-500">
+                        <i class="fas fa-tasks text-4xl mb-4 text-gray-300"></i>
+                        <p class="text-lg">没有任务，添加你的第一个任务吧！</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 日视图 -->
+            <div id="day-view" class="view-transition view-hidden p-0">
+                <div class="border-b border-gray-200 p-4 flex justify-between items-center bg-gray-50">
+                    <div class="flex items-center space-x-4">
+                        <button id="day-prev" class="p-2 rounded-full hover:bg-gray-200">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <h2 class="text-lg font-semibold" id="day-view-date"></h2>
+                        <button id="day-next" class="p-2 rounded-full hover:bg-gray-200">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                        <button id="day-today" class="text-sm bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded-full">
+                            今天
+                        </button>
+                    </div>
+                    <button id="scroll-to-now" class="text-sm bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded-full">
+                        <i class="fas fa-clock mr-1"></i>跳到现在
+                    </button>
+                </div>
+                
+                <div id="timeline" class="relative border-l border-gray-200 pl-4 h-[600px] overflow-y-auto scroll-container">
+                    <!-- 时间块将通过JavaScript动态生成 -->
+                    <div class="text-center py-8 text-gray-400">
+                        <i class="fas fa-calendar-day text-3xl mb-3"></i>
+                        <p>这一天还没有安排任务</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 周视图 -->
+            <div id="week-view" class="view-transition view-hidden p-0">
+                <div class="border-b border-gray-200 p-4 flex justify-between items-center bg-gray-50">
+                    <div class="flex items-center space-x-4">
+                        <button id="week-prev" class="p-2 rounded-full hover:bg-gray-200">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <h2 id="week-view-date" class="text-xl font-semibold">本周</h2>
+                        <button id="week-next" class="p-2 rounded-full hover:bg-gray-200">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button id="week-today" class="px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100">
+                            今天
+                        </button>
+                        <button id="scroll-to-now-week" class="px-3 py-1 text-sm bg-gray-100 rounded-full hover:bg-gray-200">
+                            <i class="fas fa-clock mr-1"></i>跳到现在
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="p-4 bg-white overflow-auto h-[650px] scroll-container">
+                    <table id="week-timeline" class="w-full">
+                        <thead id="week-days-header"></thead>
+                        <tbody id="week-hours-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="public/js/TodoList/TodoList.js"></script>
+</body>
+</html>
