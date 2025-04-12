@@ -1,0 +1,39 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# IDE/编辑器
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Git 相关
+.gitattributes
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 编译输出
+dist/
+build/
+*.min.js
+*.min.css
+
+# 环境配置
+.env
+.env.local
+.env.*.local
+
+# 日志文件
+logs/
+*.log
+
+# 临时文件
+.tmp/
+.temp/
