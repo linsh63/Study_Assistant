@@ -4,12 +4,38 @@ const bodyParser = require('body-parser');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const path = require('path');
-const { sequelize, User, Course, PomodoroTask } = require('./models'); // 添加 PomodoroTask
+const { sequelize, User, Course, PomodoroTask } = require('./models'); // 保留现有模型
 const multer = require('multer');
 const fs = require('fs');
+// 添加 SQLite 支持
+const sqlite3 = require('sqlite3').verbose();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// 创建 SQLite 数据库连接
+const db = new sqlite3.Database('./todos.db', (err) => {
+  if (err) {
+    console.error('无法连接到SQLite数据库', err);
+  } else {
+    console.log('已连接到SQLite数据库');
+    
+    // 创建任务表 (仅创建 todo_tasks)
+    db.run(`
+      CREATE TABLE IF NOT EXISTS todo_tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        text TEXT NOT NULL,
+        completed INTEGER NOT NULL DEFAULT 0,
+        priority TEXT NOT NULL DEFAULT 'medium',
+        date TEXT NOT NULL,
+        time TEXT NOT NULL,
+        datetime TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    `);
+  }
+});
 
 // 设置文件上传
 const upload = multer({ 
@@ -480,11 +506,270 @@ apiRouter.delete('/delete-account', async (req, res) => {
     }
 });
 
-app.use('/api', apiRouter);
+// 获取当前用户的所有任务
+apiRouter.get('/todo-tasks', async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: '未登录' });
+    }
+    
+    db.all('SELECT * FROM todo_tasks WHERE user_id = ? ORDER BY datetime', [req.session.userId], (err, tasks) => {
+      if (err) {
+        console.error('获取任务失败:', err);
+        return res.status(500).json({ message: '服务器错误' });
+      }
+      
+      // 转换 completed 为布尔值
+      const formattedTasks = tasks.map(task => ({
+        ...task,
+        completed: task.completed === 1
+      }));
+      
+      res.json(formattedTasks);
+    });
+  } catch (error) {
+    console.error('获取任务失败:', error);
+    res.status(500).json({ message: '服务器错误' });
+  }
+});
 
-// 删除番茄钟路由
-// const pomodoroRoutesModule = require('./server/routes/pomodoro');
-// app.use('/api/pomodoro', pomodoroRoutesModule);
+// 添加新任务
+apiRouter.post('/todo-tasks', async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: '未登录' });
+    }
+    
+    const { text, completed, priority, date, time, datetime } = req.body;
+    
+    if (!text || !date || !time) {
+      return res.status(400).json({ message: '缺少必要参数' });
+    }
+    
+    const created_at = new Date().toISOString();
+    
+    db.run(
+      `INSERT INTO todo_tasks (user_id, text, completed, priority, date, time, datetime, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [req.session.userId, text, completed ? 1 : 0, priority, date, time, datetime || new Date(date + 'T' + time).toISOString(), created_at],
+      function(err) {
+        if (err) {
+          console.error('添加任务失败:', err);
+          return res.status(500).json({ message: '服务器错误' });
+        }
+        
+        // 获取新插入的任务
+        db.get('SELECT * FROM todo_tasks WHERE id = ?', [this.lastID], (err, task) => {
+          if (err) {
+            console.error('获取新任务失败:', err);
+            return res.status(500).json({ message: '服务器错误' });
+          }
+          
+          // 转换 completed 为布尔值
+          task.completed = task.completed === 1;
+          
+          res.status(201).json(task);
+        });
+      }
+    );
+  } catch (error) {
+    console.error('添加任务失败:', error);
+    res.status(500).json({ message: '服务器错误' });
+  }
+});
+
+// 更新任务
+apiRouter.put('/todo-tasks/:id', async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: '未登录' });
+    }
+    
+    const taskId = req.params.id;
+    const { text, completed, priority, date, time, datetime } = req.body;
+    
+    // 先检查任务是否属于当前用户
+    db.get('SELECT * FROM todo_tasks WHERE id = ? AND user_id = ?', [taskId, req.session.userId], (err, task) => {
+      if (err) {
+        console.error('检查任务所有权失败:', err);
+        return res.status(500).json({ message: '服务器错误' });
+      }
+      
+      if (!task) {
+        return res.status(404).json({ message: '任务不存在或无权访问' });
+      }
+      
+      // 更新任务
+      db.run(
+        `UPDATE todo_tasks 
+         SET text = ?, completed = ?, priority = ?, date = ?, time = ?, datetime = ? 
+         WHERE id = ? AND user_id = ?`,
+        [text, completed ? 1 : 0, priority, date, time, datetime, taskId, req.session.userId],
+        function(err) {
+          if (err) {
+            console.error('更新任务失败:', err);
+            return res.status(500).json({ message: '更新任务失败' });
+          }
+          
+          // 获取更新后的任务
+          db.get('SELECT * FROM todo_tasks WHERE id = ?', [taskId], (err, updatedTask) => {
+            if (err || !updatedTask) {
+              console.error('获取更新后的任务失败:', err);
+              return res.status(500).json({ message: '获取更新后的任务失败' });
+            }
+            
+            // 转换 completed 为布尔值
+            updatedTask.completed = updatedTask.completed === 1;
+            
+            res.json(updatedTask);
+          });
+        }
+      );
+    });
+  } catch (error) {
+    console.error('更新任务失败:', error);
+    res.status(500).json({ message: '服务器错误' });
+  }
+});
+
+// 切换任务完成状态
+apiRouter.patch('/todo-tasks/:id/toggle', async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: '未登录' });
+    }
+    
+    const taskId = req.params.id;
+    const { completed } = req.body;
+    
+    // 检查任务是否属于当前用户
+    db.get('SELECT * FROM todo_tasks WHERE id = ? AND user_id = ?', [taskId, req.session.userId], (err, task) => {
+      if (err) {
+        console.error('检查任务所有权失败:', err);
+        return res.status(500).json({ message: '服务器错误' });
+      }
+      
+      if (!task) {
+        return res.status(404).json({ message: '任务不存在或无权访问' });
+      }
+      
+      // 更新完成状态
+      db.run(
+        'UPDATE todo_tasks SET completed = ? WHERE id = ? AND user_id = ?',
+        [completed ? 1 : 0, taskId, req.session.userId],
+        function(err) {
+          if (err) {
+            console.error('更新任务状态失败:', err);
+            return res.status(500).json({ message: '更新任务状态失败' });
+          }
+          
+          // 获取更新后的任务
+          db.get('SELECT * FROM todo_tasks WHERE id = ?', [taskId], (err, updatedTask) => {
+            if (err || !updatedTask) {
+              console.error('获取更新后的任务失败:', err);
+              return res.status(500).json({ message: '获取更新后的任务失败' });
+            }
+            
+            // 转换 completed 为布尔值
+            updatedTask.completed = updatedTask.completed === 1;
+            
+            res.json(updatedTask);
+          });
+        }
+      );
+    });
+  } catch (error) {
+    console.error('更新任务状态失败:', error);
+    res.status(500).json({ message: '服务器错误' });
+  }
+});
+
+// 删除任务
+apiRouter.delete('/todo-tasks/:id', async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: '未登录' });
+    }
+    
+    const taskId = req.params.id;
+    
+    // 检查任务是否属于当前用户
+    db.get('SELECT * FROM todo_tasks WHERE id = ? AND user_id = ?', [taskId, req.session.userId], (err, task) => {
+      if (err) {
+        console.error('检查任务所有权失败:', err);
+        return res.status(500).json({ message: '服务器错误' });
+      }
+      
+      if (!task) {
+        return res.status(404).json({ message: '任务不存在或无权访问' });
+      }
+      
+      // 删除任务
+      db.run('DELETE FROM todo_tasks WHERE id = ? AND user_id = ?', [taskId, req.session.userId], function(err) {
+        if (err) {
+          console.error('删除任务失败:', err);
+          return res.status(500).json({ message: '删除任务失败' });
+        }
+        
+        res.json({ message: '任务已删除', id: taskId });
+      });
+    });
+  } catch (error) {
+    console.error('删除任务失败:', error);
+    res.status(500).json({ message: '服务器错误' });
+  }
+});
+
+// 修改注销账号功能，添加删除todo任务的逻辑
+apiRouter.delete('/delete-account', async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: '未登录' });
+    }
+    
+    // 查找用户
+    const user = await User.findByPk(req.session.userId);
+    if (!user) {
+      return res.status(404).json({ message: '用户不存在' });
+    }
+    
+    // 删除该用户的所有Todo任务
+    db.run('DELETE FROM todo_tasks WHERE user_id = ?', [req.session.userId], function(err) {
+      if (err) {
+        console.error('删除用户Todo任务失败:', err);
+        // 继续删除其他数据
+      }
+      
+      console.log(`已删除 ${this?.changes || 0} 条Todo任务`);
+      
+      // 查找并删除用户的所有课程
+      Course.destroy({
+        where: { UserId: req.session.userId }
+      }).then(() => {
+        // 删除番茄钟任务
+        return PomodoroTask.destroy({
+          where: { UserId: req.session.userId }
+        });
+      }).then(() => {
+        // 删除用户
+        return user.destroy();
+      }).then(() => {
+        // 清除会话
+        req.session.destroy(() => {
+          res.json({ message: '账号已成功注销' });
+        });
+      }).catch(error => {
+        console.error('删除用户数据失败:', error);
+        res.status(500).json({ message: '服务器错误' });
+      });
+    });
+  } catch (error) {
+    console.error('注销账号失败:', error);
+    res.status(500).json({ message: '服务器错误' });
+  }
+});
+
+app.use('/api', apiRouter);
 
 // 启动服务器
 async function startServer() {
@@ -517,5 +802,17 @@ function getLocalIP() {
     
     return 'localhost';
 }
+
+// 确保关闭数据库连接
+process.on('SIGINT', () => {
+  db.close((err) => {
+    if (err) {
+      console.error('关闭数据库连接失败:', err);
+    } else {
+      console.log('数据库连接已关闭');
+    }
+    process.exit(0);
+  });
+});
 
 startServer();

@@ -48,7 +48,7 @@
 ## 技术栈
 
 - 后端：Node.js
-- 数据库：SQLite
+- 数据库：SQLite3
 - 前端：HTML, CSS, JavaScript
 
 ## 注意事项

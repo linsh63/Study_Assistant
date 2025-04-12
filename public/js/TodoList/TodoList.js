@@ -47,28 +47,41 @@ async function logout() {
     }
 }
 
+// 在页面加载时检查登录状态并获取任务
 document.addEventListener('DOMContentLoaded', async function() {
-    // 首先检查用户是否已登录
-    const isLoggedIn = await checkAuth();
-    
-    if (isLoggedIn) {
-        // 用户已登录，初始化任务管理系统
-        init();
+    try {
+        // 检查用户是否已登录
+        const isLoggedIn = await checkAuth();
         
-        // 添加主页按钮 - 替代原来的退出登录按钮
-        const homeBtn = document.getElementById('homeBtn');
-        if (homeBtn) {
-            homeBtn.addEventListener('click', function() {
-                window.location.href = 'dashboard.html'; // 导航到主页
-            });
-        } else {
-            // 如果按钮不存在，创建一个主页按钮并添加到合适的位置
-            addHomeButton();
+        if (isLoggedIn) {
+            // 用户已登录，初始化任务管理系统
+            init();
+            
+            // 添加主页按钮
+            const homeBtn = document.getElementById('homeBtn');
+            if (homeBtn) {
+                homeBtn.addEventListener('click', function() {
+                    window.location.href = 'dashboard.html'; // 导航到主页
+                });
+            } else {
+                // 如果按钮不存在，创建一个主页按钮
+                addHomeButton();
+            }
+            
+            // 从服务器获取任务
             await fetchTasks();
         }
+        // 如果未登录，checkAuth 函数已经处理了重定向
+    } catch (error) {
+        console.error('初始化失败:', error);
+        showNotification('初始化失败: ' + error.message, 'error');
     }
-    // 如果未登录，checkAuth 函数已经处理了重定向
 });
+
+// 但保留一个本地存储备份函数以防网络问题
+function backupTasksLocally() {
+    localStorage.setItem('tasks', JSON.stringify(tasks));
+}
 
 // 添加主页按钮到合适位置
 function addHomeButton() {
@@ -104,19 +117,22 @@ function addHomeButton() {
 // 从服务器获取任务
 async function fetchTasks() {
     try {
-        const response = await fetch(`${API_URL}/tasks`, {
+        // 显示加载状态
+        showLoadingIndicator(true);
+        
+        const response = await fetch(`${API_URL}/todo-tasks`, {
             credentials: 'include'
         });
         
         if (!response.ok) {
-            throw new Error('获取任务失败');
+            throw new Error(`获取任务失败: ${response.status}`);
         }
         
         const fetchedTasks = await response.json();
         tasks = fetchedTasks;
         
-        // 更新本地存储
-        saveTasks();
+        // 备份到本地存储
+        localStorage.setItem('tasks', JSON.stringify(tasks));
         
         // 重新渲染视图
         renderTasks();
@@ -127,32 +143,184 @@ async function fetchTasks() {
         } else if (weekView.classList.contains('view-visible')) {
             renderWeekView();
         }
+        
+        showLoadingIndicator(false);
     } catch (error) {
         console.error('获取任务出错:', error);
         
         // 如果获取失败，使用本地存储的任务数据
         tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+        
+        renderTasks();
+        updateTaskCount();
+        
+        if (dayView.classList.contains('view-visible')) {
+            renderDayView();
+        } else if (weekView.classList.contains('view-visible')) {
+            renderWeekView();
+        }
+        
+        showLoadingIndicator(false);
+        showNotification('无法连接到服务器，使用本地数据', 'warning');
     }
 }
 
-// 修改 saveTasks 函数，同步到服务器
-async function saveTasks() {
-    // 保存到本地存储
-    localStorage.setItem('tasks', JSON.stringify(tasks));
-    
+// 检测网络状态变化并同步数据
+window.addEventListener('online', async function() {
+    showNotification('网络已恢复，正在同步数据...', 'info');
     try {
-        // 同步到服务器
-        await fetch(`${API_URL}/tasks/sync`, {
+        await syncTasksWithServer();
+        showNotification('数据同步成功', 'success');
+    } catch (error) {
+        console.error('数据同步失败:', error);
+        showNotification('数据同步失败，请手动刷新页面', 'error');
+    }
+});
+
+// 同步本地任务与服务器
+async function syncTasksWithServer() {
+    try {
+        // 获取服务器上的任务
+        const response = await fetch(`${API_URL}/todo-tasks`, {
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            throw new Error(`获取服务器任务失败: ${response.status}`);
+        }
+        
+        const serverTasks = await response.json();
+        
+        // 获取本地存储的任务
+        const localTasks = JSON.parse(localStorage.getItem('tasks')) || [];
+        
+        // 对比并同步任务
+        await reconcileTasks(localTasks, serverTasks);
+        
+        // 重新获取最新任务列表
+        await fetchTasks();
+    } catch (error) {
+        console.error('同步任务失败:', error);
+        throw error;
+    }
+}
+
+// 对比并调和本地任务与服务器任务
+async function reconcileTasks(localTasks, serverTasks) {
+    try {
+        // 创建任务ID映射以快速查找
+        const serverTaskMap = {};
+        serverTasks.forEach(task => {
+            serverTaskMap[task.id] = task;
+        });
+        
+        // 检查本地任务的变更
+        for (const localTask of localTasks) {
+            // 如果是本地创建的临时任务（无ID或ID不在服务器上）
+            if (!localTask.id || !serverTaskMap[localTask.id]) {
+                // 创建新任务到服务器
+                await createTaskOnServer(localTask);
+                continue;
+            }
+            
+            // 如果任务存在于服务器但有本地修改
+            const serverTask = serverTaskMap[localTask.id];
+            if (hasTaskChanged(localTask, serverTask)) {
+                // 更新服务器任务
+                await updateTaskOnServer(localTask.id, localTask);
+            }
+        }
+    } catch (error) {
+        console.error('调和任务失败:', error);
+        throw error;
+    }
+}
+
+// 更新服务器上的任务
+async function updateTaskOnServer(taskId, task) {
+    try {
+        const taskDateObj = new Date(task.date);
+        const [hours, minutes] = task.time.split(':').map(Number);
+        taskDateObj.setHours(hours, minutes, 0, 0);
+        
+        const taskUpdate = {
+            text: task.text,
+            completed: task.completed,
+            priority: task.priority,
+            date: task.date,
+            time: task.time,
+            datetime: taskDateObj.toISOString()
+        };
+        
+        await fetch(`${API_URL}/todo-tasks/${taskId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify(taskUpdate)
+        });
+    } catch (error) {
+        console.error('更新服务器任务失败:', error);
+        throw error;
+    }
+}
+
+// 创建任务对象
+function createTaskObject(text, date, time, priority) {
+    // 创建日期对象
+    const taskDateObj = new Date(date);
+    const [hours, minutes] = time.split(':').map(Number);
+    taskDateObj.setHours(hours, minutes, 0, 0);
+    
+    return {
+        text: text,
+        completed: false,
+        priority: priority,
+        date: date,
+        time: time,
+        datetime: taskDateObj.toISOString()
+        // 不再需要本地生成ID，服务器会提供ID
+        // user_id 由服务器根据会话信息添加
+    };
+}
+
+// 检查任务是否有变更
+function hasTaskChanged(localTask, serverTask) {
+    return localTask.text !== serverTask.text ||
+           localTask.completed !== serverTask.completed ||
+           localTask.priority !== serverTask.priority ||
+           localTask.date !== serverTask.date ||
+           localTask.time !== serverTask.time;
+}
+
+// 创建新任务到服务器
+async function createTaskOnServer(task) {
+    try {
+        const taskDateObj = new Date(task.date);
+        const [hours, minutes] = task.time.split(':').map(Number);
+        taskDateObj.setHours(hours, minutes, 0, 0);
+        
+        const newTask = {
+            text: task.text,
+            completed: task.completed,
+            priority: task.priority,
+            date: task.date,
+            time: task.time,
+            datetime: taskDateObj.toISOString()
+        };
+        
+        await fetch(`${API_URL}/todo-tasks`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             credentials: 'include',
-            body: JSON.stringify({ tasks })
+            body: JSON.stringify(newTask)
         });
     } catch (error) {
-        console.error('同步任务到服务器失败:', error);
-        // 继续使用本地存储，不中断用户操作
+        console.error('创建服务器任务失败:', error);
+        throw error;
     }
 }
 
@@ -355,50 +523,84 @@ function setFilter(filter) {
 }
 
 // 添加任务
-function addTask() {
+async function addTask() {
     const taskText = taskInput.value.trim();
     const priority = prioritySelect.value;
     const date = taskDate.value;
     const time = taskTime.value;
     
     if (taskText && date && time) {
-        // 创建日期对象
-        const taskDateObj = new Date(date);
-        const [hours, minutes] = time.split(':').map(Number);
-        taskDateObj.setHours(hours, minutes, 0, 0);
-        
-        const newTask = {
-            id: Date.now(),
-            text: taskText,
-            completed: false,
-            priority: priority,
-            date: formatDateInput(new Date(date)), // 存储为YYYY-MM-DD格式
-            time: time,
-            datetime: taskDateObj.toISOString(),
-            createdAt: new Date().toISOString()
-        };
-        
-        tasks.push(newTask);
-        saveTasks();
-        renderTasks();
-        updateTaskCount();
-        
-        // 如果是当前视图，重新渲染
-        if (dayView.classList.contains('view-visible')) {
-            renderDayView();
-        } else if (weekView.classList.contains('view-visible')) {
-            renderWeekView();
+        try {
+            // 显示加载状态
+            addTaskBtn.disabled = true;
+            addTaskBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>添加中...';
+            
+            // 创建日期对象
+            const taskDateObj = new Date(date);
+            const [hours, minutes] = time.split(':').map(Number);
+            taskDateObj.setHours(hours, minutes, 0, 0);
+            
+            const newTask = {
+                text: taskText,
+                completed: false,
+                priority: priority,
+                date: date,
+                time: time,
+                datetime: taskDateObj.toISOString()
+            };
+            
+            // 发送到服务器
+            const response = await fetch(`${API_URL}/todo-tasks`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify(newTask)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`添加任务失败: ${response.status}`);
+            }
+            
+            // 获取服务器返回的任务（包含ID）
+            const createdTask = await response.json();
+            
+            // 添加到本地任务数组
+            tasks.push(createdTask);
+            
+            // 更新本地存储
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            
+            // 重新渲染视图
+            renderTasks();
+            updateTaskCount();
+            
+            if (dayView.classList.contains('view-visible')) {
+                renderDayView();
+            } else if (weekView.classList.contains('view-visible')) {
+                renderWeekView();
+            }
+            
+            // 重置输入
+            taskInput.value = '';
+            const now = new Date();
+            taskDate.value = formatDateInput(now);
+            taskTime.value = `${(hours + 1) % 24}`.padStart(2, '0') + ':00';
+            
+            taskInput.focus();
+            
+            showNotification('任务添加成功', 'success');
+        } catch (error) {
+            console.error('添加任务失败:', error);
+            showNotification('添加任务失败: ' + error.message, 'error');
+        } finally {
+            // 恢复按钮状态
+            addTaskBtn.disabled = false;
+            addTaskBtn.innerHTML = '<i class="fas fa-plus mr-2"></i>添加任务';
         }
-        
-        // 重置输入
-        taskInput.value = '';
-        const now = new Date();
-        taskDate.value = formatDateInput(now);
-        
-        // 设置时间为下一个整点
-        taskTime.value = `${(hours + 1) % 24}`.padStart(2, '0') + ':00';
-        
-        taskInput.focus();
+    } else {
+        showNotification('请填写完整的任务信息', 'warning');
     }
 }
 
@@ -1417,43 +1619,114 @@ function openHourDetails(date, hour, tasks) {
 }
 
 // 切换任务完成状态
-function toggleTaskComplete(taskId) {
-    tasks = tasks.map(task => {
-        if (task.id === taskId) {
-            return { ...task, completed: !task.completed };
+async function toggleTaskComplete(taskId) {
+    // 找到当前任务
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    // 获取新状态
+    const newStatus = !task.completed;
+    
+    try {
+        // 显示更新中的样式
+        const checkbox = document.querySelector(`[data-id="${taskId}"] input[type="checkbox"]`);
+        if (checkbox) {
+            checkbox.disabled = true;
         }
-        return task;
-    });
-    saveTasks();
-    
-    // 重新渲染当前视图
-    if (listView.classList.contains('view-visible')) {
-        renderTasks();
-    } else if (dayView.classList.contains('view-visible')) {
-        renderDayView();
-    } else {
-        renderWeekView();
+        
+        // 发送更新请求
+        const response = await fetch(`${API_URL}/todo-tasks/${taskId}/toggle`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({ completed: newStatus })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`更新任务状态失败: ${response.status}`);
+        }
+        
+        // 获取更新后的任务
+        const updatedTask = await response.json();
+        
+        // 更新本地数组
+        tasks = tasks.map(t => t.id === taskId ? updatedTask : t);
+        
+        // 更新本地存储
+        localStorage.setItem('tasks', JSON.stringify(tasks));
+        
+        // 重新渲染当前视图
+        if (listView.classList.contains('view-visible')) {
+            renderTasks();
+        } else if (dayView.classList.contains('view-visible')) {
+            renderDayView();
+        } else {
+            renderWeekView();
+        }
+        
+        updateTaskCount();
+    } catch (error) {
+        console.error('更新任务状态失败:', error);
+        showNotification('更新任务状态失败: ' + error.message, 'error');
+        
+        // 恢复复选框状态
+        const checkbox = document.querySelector(`[data-id="${taskId}"] input[type="checkbox"]`);
+        if (checkbox) {
+            checkbox.disabled = false;
+            checkbox.checked = !newStatus; // 恢复原状态
+        }
     }
-    
-    updateTaskCount();
+}
+// 删除任务
+async function deleteTask(taskId) {
+    try {
+        // 找到需要删除的任务
+        const taskElement = document.querySelector(`[data-id="${taskId}"]`);
+        if (taskElement) {
+            taskElement.classList.add('opacity-50');
+        }
+        
+        // 发送删除请求
+        const response = await fetch(`${API_URL}/todo-tasks/${taskId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            throw new Error(`删除任务失败: ${response.status}`);
+        }
+        
+        // 从本地数组中移除
+        tasks = tasks.filter(task => task.id !== taskId);
+        
+        // 更新本地存储
+        localStorage.setItem('tasks', JSON.stringify(tasks));
+        
+        // 重新渲染当前视图
+        if (listView.classList.contains('view-visible')) {
+            renderTasks();
+        } else if (dayView.classList.contains('view-visible')) {
+            renderDayView();
+        } else {
+            renderWeekView();
+        }
+        
+        updateTaskCount();
+        showNotification('任务已删除', 'success');
+    } catch (error) {
+        console.error('删除任务失败:', error);
+        showNotification('删除任务失败: ' + error.message, 'error');
+        
+        // 恢复任务显示
+        const taskElement = document.querySelector(`[data-id="${taskId}"]`);
+        if (taskElement) {
+            taskElement.classList.remove('opacity-50');
+        }
+    }
 }
 
-// 删除任务
-function deleteTask(taskId) {
-    tasks = tasks.filter(task => task.id !== taskId);
-    saveTasks();
-    
-    // 重新渲染当前视图
-    if (listView.classList.contains('view-visible')) {
-        renderTasks();
-    } else if (dayView.classList.contains('view-visible')) {
-        renderDayView();
-    } else {
-        renderWeekView();
-    }
-    
-    updateTaskCount();
-}
 
 // 编辑任务
 function editTask(taskId) {
@@ -1653,39 +1926,119 @@ function editTask(taskId) {
 }
 
 // 更新任务
-function updateTask(taskId, updatedData) {
-    tasks = tasks.map(task => {
-        if (task.id === taskId) {
-            // 更新日期对象
-            const taskDateObj = new Date(updatedData.date);
-            const [hours, minutes] = updatedData.time.split(':').map(Number);
-            taskDateObj.setHours(hours, minutes, 0, 0);
-            
-            return {
-                ...task,
-                text: updatedData.text,
-                date: updatedData.date,
-                time: updatedData.time,
-                priority: updatedData.priority,
-                completed: updatedData.completed,
-                datetime: taskDateObj.toISOString()
-            };
+async function updateTask(taskId, updatedData) {
+    try {
+        // 创建日期对象以更新datetime字段
+        const taskDateObj = new Date(updatedData.date);
+        const [hours, minutes] = updatedData.time.split(':').map(Number);
+        taskDateObj.setHours(hours, minutes, 0, 0);
+        
+        const taskUpdate = {
+            ...updatedData,
+            datetime: taskDateObj.toISOString()
+        };
+        
+        // 发送更新请求
+        const response = await fetch(`${API_URL}/todo-tasks/${taskId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify(taskUpdate)
+        });
+        
+        if (!response.ok) {
+            throw new Error(`更新任务失败: ${response.status}`);
         }
-        return task;
-    });
-    
-    saveTasks();
-    
-    // 重新渲染当前视图
-    if (listView.classList.contains('view-visible')) {
-        renderTasks();
-    } else if (dayView.classList.contains('view-visible')) {
-        renderDayView();
-    } else {
-        renderWeekView();
+        
+        // 获取更新后的任务
+        const updatedTask = await response.json();
+        
+        // 更新本地数组
+        tasks = tasks.map(task => task.id === taskId ? updatedTask : task);
+        
+        // 更新本地存储
+        localStorage.setItem('tasks', JSON.stringify(tasks));
+        
+        // 重新渲染当前视图
+        if (listView.classList.contains('view-visible')) {
+            renderTasks();
+        } else if (dayView.classList.contains('view-visible')) {
+            renderDayView();
+        } else {
+            renderWeekView();
+        }
+        
+        updateTaskCount();
+        showNotification('任务已更新', 'success');
+    } catch (error) {
+        console.error('更新任务失败:', error);
+        showNotification('更新任务失败: ' + error.message, 'error');
+    }
+}
+// 添加通知函数
+function showNotification(message, type = 'info') {
+    // 如果已存在通知，则移除
+    const existingNotification = document.querySelector('.notification-toast');
+    if (existingNotification) {
+        existingNotification.remove();
     }
     
-    updateTaskCount();
+    // 创建通知元素
+    const notification = document.createElement('div');
+    notification.className = `notification-toast fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50`;
+    
+    // 根据类型设置样式
+    switch(type) {
+        case 'success':
+            notification.classList.add('bg-green-500', 'text-white');
+            notification.innerHTML = '<i class="fas fa-check-circle mr-2"></i>' + message;
+            break;
+        case 'error':
+            notification.classList.add('bg-red-500', 'text-white');
+            notification.innerHTML = '<i class="fas fa-exclamation-circle mr-2"></i>' + message;
+            break;
+        case 'warning':
+            notification.classList.add('bg-yellow-500', 'text-white');
+            notification.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>' + message;
+            break;
+        default:
+            notification.classList.add('bg-blue-500', 'text-white');
+            notification.innerHTML = '<i class="fas fa-info-circle mr-2"></i>' + message;
+    }
+    
+    // 添加到DOM
+    document.body.appendChild(notification);
+    
+    // 3秒后自动消失
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transition = 'opacity 0.5s ease-out';
+        
+        setTimeout(() => {
+            notification.remove();
+        }, 500);
+    }, 3000);
+}
+
+// 显示加载指示器
+function showLoadingIndicator(show) {
+    let loadingIndicator = document.getElementById('loading-indicator');
+    
+    if (show) {
+        if (!loadingIndicator) {
+            loadingIndicator = document.createElement('div');
+            loadingIndicator.id = 'loading-indicator';
+            loadingIndicator.className = 'fixed top-0 left-0 right-0 bg-blue-500 text-white py-2 text-center z-50';
+            loadingIndicator.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>正在加载...';
+            document.body.prepend(loadingIndicator);
+        }
+    } else {
+        if (loadingIndicator) {
+            loadingIndicator.remove();
+        }
+    }
 }
 
 // 更新任务计数
