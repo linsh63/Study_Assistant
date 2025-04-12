@@ -39,6 +39,5 @@ logs/
 .temp/
 
 # 数据库文件
-data/*.sqlite
-data/*.sqlite3
-data/*.db
+data/*
+!data/.gitkeep

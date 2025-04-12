@@ -39,12 +39,19 @@ setTimeout(() => {
 // 获取课表元素
 const timetableElement = document.querySelector('.timetable-container');
 
+// 临时移除高亮效果
+const todayCells = document.querySelectorAll('.timetable .today');
+todayCells.forEach(cell => cell.classList.remove('today'));
+
 // 使用html2canvas将课表转换为图片
 html2canvas(timetableElement, {
     scale: 2, // 提高图片质量
     backgroundColor: '#ffffff',
     logging: false
 }).then(canvas => {
+    // 恢复高亮效果
+    todayCells.forEach(cell => cell.classList.add('today'));
+    
     // 将canvas转换为图片URL
     const imgData = canvas.toDataURL('image/png');
     
@@ -60,6 +67,8 @@ html2canvas(timetableElement, {
     
     showToast('课表已导出为图片', 'success');
 }).catch(error => {
+    // 确保出错时也恢复高亮效果
+    todayCells.forEach(cell => cell.classList.add('today'));
     console.error('导出图片失败:', error);
     showToast('导出图片失败', 'error');
 });

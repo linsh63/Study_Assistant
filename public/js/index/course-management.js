@@ -48,6 +48,20 @@
         const timetableBody = document.getElementById('timetableBody');
         timetableBody.innerHTML = '';
         
+        // 获取今天是星期几
+        const today = new Date().getDay() || 7; // 周日返回0，转换为7
+        
+        // 高亮今天的列头
+        const headers = document.querySelectorAll('.timetable th');
+        headers.forEach((header, index) => {
+            // index从0开始，第0列是时间列，所以实际星期几要减1
+            if (index === today) {
+                header.classList.add('today');
+            } else {
+                header.classList.remove('today');
+            }
+        });
+        
         // 创建时间段行
         timeSlots.forEach((slot, index) => {
             const row = document.createElement('tr');
@@ -61,6 +75,10 @@
             // 每天的单元格
             for (let day = 1; day <= 7; day++) {
                 const cell = document.createElement('td');
+                // 如果是今天，添加today类
+                if (day === today) {
+                    cell.classList.add('today');
+                }
                 
                 // 查找该时间段和星期的课程
                 const coursesInSlot = courses.filter(course => {
@@ -382,9 +400,13 @@
     
     // 在添加新课程时调用
     function addCourse(courseData) {
-        // ... 保留原有代码 ...
         if (!courseData.color) {
             courseData.color = getRandomUnusedColor();
         }
-        // ... 保留原有代码 ...
+        if (!courseData.color) {
+            courseData.color = getRandomUnusedColor();
+        }
+        if (!courseData.color) {
+            courseData.color = getRandomUnusedColor();
+        }
 }

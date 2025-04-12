@@ -24,9 +24,10 @@
 }
 
 body {
-    background-color: #f5f7fa;
+    background-color: #e6f0ff;  /* 修改为与主页相同的浅蓝色背景 */
     color: #333;
     line-height: 1.6;
+    min-height: 100vh;
 }
 
 .container {
@@ -386,6 +387,16 @@ header {
     table-layout: fixed;
 }
 
+/* 修改今日高亮样式 */
+.timetable th.today {
+    background-color: rgba(255, 192, 203, 0.2);  /* 浅粉色背景 */
+    position: relative;
+}
+
+.timetable td.today {
+    background-color: rgba(255, 192, 203, 0.1);  /* 更浅的粉色背景 */
+}
+
 .timetable th, .timetable td {
     border: 1px solid #e0e0e0;
     padding: 10px;
@@ -691,7 +702,8 @@ tr:hover {
 }
 
 .modal-content {
-    background-color: white;
+    background-color: rgba(255, 255, 255, 0.95);  /* 略微透明的白色背景 */
+    backdrop-filter: blur(8px);  /* 添加毛玻璃效果 */
     border-radius: var(--border-radius);
     box-shadow: var(--box-shadow);
     width: 500px;
@@ -1162,7 +1174,8 @@ tr:hover {
 }
 
 .modal-content {
-    background-color: white;
+    background-color: rgba(255, 255, 255, 0.95);  /* 略微透明的白色背景 */
+    backdrop-filter: blur(8px);  /* 添加毛玻璃效果 */
     border-radius: var(--border-radius);
     box-shadow: var(--box-shadow);
     width: 500px;

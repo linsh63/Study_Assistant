@@ -231,6 +231,34 @@
             </div>
         </div>
     </div>
+    <!-- 白噪音播放器 -->
+    <div id="white-noise-widget" class="white-noise-widget">
+        <div class="widget-header">
+            <button id="minimize-player" class="control-btn minimize-btn">
+                <i class="fas fa-minus"></i>
+            </button>
+            <span class="widget-title">白噪音</span>
+        </div>
+        <div class="player-content">
+            <select id="noise-type" class="noise-select">
+                <option value="rain">🌧️ 下雨声</option>
+                <option value="waves">🌊 海浪声</option>
+                <option value="forest">🌲 森林声</option>
+                <option value="cafe">☕ 咖啡厅</option>
+                <option value="fire">🔥 篝火声</option>
+            </select>
+            <div class="controls">
+                <button id="play-noise" class="control-btn play-btn">
+                    <i class="fas fa-play"></i>
+                </button>
+                <div class="volume-control">
+                    <i class="fas fa-volume-up volume-icon"></i>
+                    <input type="range" id="volume-slider" min="0" max="100" value="50" class="volume-slider">
+                    <span id="volume-value" class="volume-value">50%</span>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="public/js/pomodoro-stats/pomodoro.js"></script>
 </body>
 </html>

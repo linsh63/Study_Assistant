@@ -115,6 +115,119 @@ function showToast(message, type = 'success') {
     }
 }
 
+// 在文件末尾添加白噪音相关代码
+
+// 白噪音音频对象和状态管理
+let audioContext = null;
+let noiseSource = null;
+let gainNode = null;
+let isPlaying = false;
+let currentBuffer = null; // 保存当前音频buffer
+let startTime = 0; // 记录开始时间
+let pauseTime = 0; // 记录暂停时间
+
+// 白噪音音频文件映射
+const noiseFiles = {
+    rain: 'public/audio/rain.mp3',
+    waves: 'public/audio/waves.mp3',
+    forest: 'public/audio/forest.mp3',
+    cafe: 'public/audio/cafe.mp3',
+    fire: 'public/audio/fire.mp3'
+};
+
+// 初始化音频上下文
+function initAudioContext() {
+    if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        gainNode = audioContext.createGain();
+        gainNode.connect(audioContext.destination);
+    }
+}
+
+// 播放/暂停白噪音
+async function toggleNoise() {
+    const playBtn = document.getElementById('play-noise');
+    
+    if (!isPlaying) {
+        try {
+            initAudioContext();
+            
+            if (!currentBuffer) {
+                // 首次加载音频
+                const noiseType = document.getElementById('noise-type').value;
+                const response = await fetch(noiseFiles[noiseType]);
+                const arrayBuffer = await response.arrayBuffer();
+                currentBuffer = await audioContext.decodeAudioData(arrayBuffer);
+            }
+            
+            noiseSource = audioContext.createBufferSource();
+            noiseSource.buffer = currentBuffer;
+            noiseSource.loop = true;
+            noiseSource.connect(gainNode);
+            
+            // 设置音量
+            const volume = document.getElementById('volume-slider').value;
+            gainNode.gain.value = volume / 100;
+            
+            // 如果是从暂停恢复，计算偏移量
+            if (pauseTime > 0) {
+                const offset = (pauseTime - startTime) % currentBuffer.duration;
+                noiseSource.start(0, offset);
+            } else {
+                noiseSource.start(0);
+            }
+            
+            startTime = audioContext.currentTime - (pauseTime > 0 ? pauseTime : 0);
+            pauseTime = 0;
+            
+            playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+            isPlaying = true;
+            
+        } catch (error) {
+            console.error('音频加载或播放失败:', error);
+            showToast('音频加载失败', 'error');
+            playBtn.innerHTML = '<i class="fas fa-play"></i>';
+            isPlaying = false;
+        }
+    } else {
+        if (noiseSource) {
+            pauseTime = audioContext.currentTime;
+            noiseSource.stop();
+            noiseSource.disconnect();
+            noiseSource = null;
+        }
+        playBtn.innerHTML = '<i class="fas fa-play"></i>';
+        isPlaying = false;
+    }
+}
+
+// 更新音量
+function updateVolume() {
+    const volume = document.getElementById('volume-slider').value;
+    document.getElementById('volume-value').textContent = volume + '%';
+    
+    if (gainNode) {
+        gainNode.gain.value = volume / 100;
+    }
+}
+
+// 最小化播放器
+function togglePlayerMinimize() {
+    const widget = document.getElementById('white-noise-widget');
+    const content = widget.querySelector('.player-content');
+    const minButton = document.getElementById('minimize-player');
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        minButton.innerHTML = '<i class="fas fa-minus"></i>';
+        widget.classList.remove('minimized');
+    } else {
+        content.style.display = 'none';
+        minButton.innerHTML = '<i class="fas fa-plus"></i>';
+        widget.classList.add('minimized');
+    }
+}
+
 // 初始化
 async function init() {
     // 首先检查登录状态
@@ -137,6 +250,52 @@ async function init() {
     uploadBgBtn.addEventListener('click', () => bgUploadInput.click());
     removeBgBtn.addEventListener('click', removeBackground);
     bgUploadInput.addEventListener('change', handleBgUpload);
+    // 添加白噪音控件事件监听
+    document.getElementById('play-noise').addEventListener('click', toggleNoise);
+    document.getElementById('volume-slider').addEventListener('input', updateVolume);
+    document.getElementById('minimize-player').addEventListener('click', togglePlayerMinimize);
+    document.getElementById('noise-type').addEventListener('change', async () => {
+        // 保存当前音量
+        const currentVolume = gainNode ? gainNode.gain.value : 0.5;
+        
+        // 如果当前正在播放，先停止当前音频
+        if (isPlaying) {
+            if (noiseSource) {
+                noiseSource.stop();
+                noiseSource.disconnect();
+                noiseSource = null;
+            }
+        }
+        
+        // 重置音频状态
+        currentBuffer = null;
+        startTime = 0;
+        pauseTime = 0;
+        
+        // 如果之前在播放状态，立即更新按钮状态并开始加载新音频
+        if (currentVolume > 0) {
+            // 立即将按钮更新为暂停状态
+            document.getElementById('play-noise').innerHTML = '<i class="fas fa-pause"></i>';
+            isPlaying = true;
+            
+            // 异步加载和播放新音频
+            try {
+                await toggleNoise();
+                // 恢复之前的音量
+                if (gainNode) {
+                    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(currentVolume, audioContext.currentTime + 0.5);
+                }
+            } catch (error) {
+                // 如果加载失败，恢复播放按钮状态
+                document.getElementById('play-noise').innerHTML = '<i class="fas fa-play"></i>';
+                isPlaying = false;
+                console.error('切换音频失败:', error);
+            }
+        }
+    });
+
+// ... 现有代码 ...
 
    // 添加显示模式按钮事件
    document.getElementById('flip-display').addEventListener('click', () => {
