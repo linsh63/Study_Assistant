@@ -39,6 +39,6 @@ logs/
 .temp/
 
 # 数据库文件
-*.sqlite
-*.sqlite3
-*.db
+data/*.sqlite
+data/*.sqlite3
+data/*.db
