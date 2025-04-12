@@ -37,3 +37,8 @@ logs/
 # 临时文件
 .tmp/
 .temp/
+
+# 数据库文件
+*.sqlite
+*.sqlite3
+*.db
