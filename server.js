@@ -816,3 +816,147 @@ process.on('SIGINT', () => {
 });
 
 startServer();
+
+// 获取用户课程
+apiRouter.get('/courses/user', async (req, res) => {
+    try {
+        if (!req.session.userId) {
+            return res.status(401).json({ message: '未登录' });
+        }
+
+        const courses = await Course.findAll({
+            where: { userId: req.session.userId }
+        });
+
+        res.json(courses);
+    } catch (error) {
+        console.error('获取课程失败:', error);
+        res.status(500).json({ message: '获取课程失败' });
+    }
+});
+
+// ... 现有代码 ...
+
+// 修改获取用户课程的路由，确保返回正确的课程数据
+apiRouter.get('/courses/current', async (req, res) => {
+    try {
+        if (!req.session.userId) {
+            return res.status(401).json({ message: '未登录' });
+        }
+
+        const courses = await Course.findAll({
+            where: { UserId: req.session.userId },
+            attributes: ['id', 'name', 'location', 'weekDay', 'startTime'],
+            order: [['weekDay', 'ASC'], ['startTime', 'ASC']]
+        });
+
+        res.json(courses);
+    } catch (error) {
+        console.error('获取课程失败:', error);
+        res.status(500).json({ message: '获取课程失败' });
+    }
+});
+
+// 修改批量添加任务的路由
+apiRouter.post('/tasks/import', async (req, res) => {
+    try {
+        if (!req.session.userId) {
+            return res.status(401).json({ message: '未登录' });
+        }
+
+        const { tasks } = req.body;
+        
+        if (!Array.isArray(tasks) || tasks.length === 0) {
+            return res.status(400).json({ message: '无效的任务数据' });
+        }
+
+        // 使用事务处理批量插入
+        await new Promise((resolve, reject) => {
+            db.serialize(() => {
+                db.run('BEGIN TRANSACTION');
+                
+                const stmt = db.prepare(`
+                    INSERT INTO todo_tasks 
+                    (user_id, text, completed, priority, date, time, datetime, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                `);
+
+                tasks.forEach(task => {
+                    stmt.run([
+                        req.session.userId,
+                        task.text,
+                        task.completed ? 1 : 0,
+                        task.priority,
+                        task.date,
+                        task.time,
+                        task.datetime,
+                        task.created_at
+                    ], function(err) {
+                        if (err) {
+                            db.run('ROLLBACK');
+                            reject(err);
+                        }
+                    });
+                });
+
+                stmt.finalize(err => {
+                    if (err) {
+                        db.run('ROLLBACK');
+                        reject(err);
+                    } else {
+                        db.run('COMMIT', err => {
+                            if (err) {
+                                reject(err);
+                            } else {
+                                resolve();
+                            }
+                        });
+                    }
+                });
+            });
+        });
+
+        res.json({ message: '任务导入成功' });
+    } catch (error) {
+        console.error('导入任务失败:', error);
+        res.status(500).json({ message: error.message || '导入任务失败' });
+    }
+});
+
+// ... 现有代码 ...
+// 批量添加任务
+apiRouter.post('/todo-tasks/batch', async (req, res) => {
+    try {
+        if (!req.session.userId) {
+            return res.status(401).json({ message: '未登录' });
+        }
+
+        const { tasks } = req.body;
+        
+        // 为每个任务添加用户ID
+        const tasksWithUserId = tasks.map(task => ({
+            ...task,
+            user_id: req.session.userId
+        }));
+
+        // 批量插入任务
+        await db.run(`
+            INSERT INTO todo_tasks (user_id, text, completed, priority, date, time, datetime, created_at)
+            VALUES ${tasksWithUserId.map(task => `(
+                ${task.user_id},
+                '${task.text}',
+                ${task.completed},
+                '${task.priority}',
+                '${task.date}',
+                '${task.time}',
+                '${task.datetime}',
+                '${task.created_at}'
+            )`).join(',')}
+        `);
+
+        res.json({ message: '任务批量添加成功' });
+    } catch (error) {
+        console.error('批量添加任务失败:', error);
+        res.status(500).json({ message: '批量添加任务失败' });
+    }
+});

@@ -323,7 +323,6 @@ function validateBatchForm() {
     })).then(() => {
         // 所有课程添加完成后，一次性更新UI
         renderCourseTable();
-        renderTimetable();
         updateStatistics();
         showToast(`成功批量导入 ${newCourses.length} 门课程`, 'success');
     }).catch(error => {
@@ -331,7 +330,6 @@ function validateBatchForm() {
         console.error('批量导入错误:', error);
         // 即使有错误，也显示成功信息，因为部分课程可能已经成功添加
         renderCourseTable();
-        renderTimetable();
         updateStatistics();
         showToast(`课程批量导入完成`, 'success');
     });
@@ -616,7 +614,6 @@ async function batchDeleteCourses() {
     
     // 更新UI
     renderCourseTable();
-    renderTimetable();
     updateStatistics();
     
     // 更新全选复选框状态

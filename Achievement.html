@@ -753,7 +753,7 @@
                     category: 'system',
                     difficulty: 'intermediate',
                     xpReward: 50,
-                    color: 'purple''
+                    color: 'purple'
                 },
                 'memory-management': {
                     name: '内存管理',
@@ -2397,6 +2397,240 @@
             // 初始化页面
             updateXpAndLevel();
             updateBadges();
+
+            // 在 DOMContentLoaded 事件处理函数内部添加以下代码实现云图功能
+
+            function generateAchievementCloud() {
+    // 获取所有成就ID
+    const achievementIds = Object.keys(achievements);
+    
+    // 随机打乱数组
+    const shuffledIds = achievementIds.sort(() => Math.random() - 0.5);
+    
+    // 选择前20个成就
+    const selectedIds = shuffledIds.slice(0, 20);
+    
+    // 准备云图数据
+    const cloudData = selectedIds.map(id => {
+        const achievement = achievements[id];
+        // 减小字体大小范围，避免过大字体导致渲染问题
+        let size;
+        switch (achievement.difficulty) {
+            case 'basic': size = 12; break;
+            case 'intermediate': size = 14; break;
+            case 'advanced': size = 16; break;
+            case 'expert': size = 18; break;
+            case 'master': size = 20; break;
+            default: size = 14;
+        }
+        
+        // 根据难度设置颜色
+        let color;
+        switch (achievement.difficulty) {
+            case 'basic': color = '#3b82f6'; break;
+            case 'intermediate': color = '#8b5cf6'; break;
+            case 'advanced': color = '#ef4444'; break;
+            case 'expert': color = '#10b981'; break;
+            case 'master': color = '#f97316'; break;
+            default: color = '#6b7280';
+        }
+        
+        // 使用更短的名称以避免过长文本导致问题
+        const displayName = achievement.name.length > 10 ? 
+            achievement.name.substring(0, 10) + '...' : 
+            achievement.name;
+            
+        return [displayName, size, color];
+    });
+    
+    // 渲染云图
+    if (typeof WordCloud !== 'undefined') {
+        const cloudContainer = document.getElementById('achievement-cloud');
+        
+        // 确保容器有合适的尺寸
+        if (cloudContainer.offsetHeight < 200) {
+            cloudContainer.style.height = '300px';
+        }
+        
+        // 清除容器内容
+        while (cloudContainer.firstChild) {
+            cloudContainer.removeChild(cloudContainer.firstChild);
+        }
+        
+        try {
+            // 创建画布 - 使用较小的宽高
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.min(cloudContainer.offsetWidth, 500);
+            canvas.height = Math.min(cloudContainer.offsetHeight, 400);
+            cloudContainer.appendChild(canvas);
+            
+            // 添加加载指示器
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.className = 'absolute inset-0 flex items-center justify-center bg-white bg-opacity-70';
+            loadingIndicator.innerHTML = '<div class="text-blue-500"><i class="fas fa-spinner fa-spin mr-2"></i>生成云图中...</div>';
+            cloudContainer.appendChild(loadingIndicator);
+            
+            // 使用更温和的配置
+            WordCloud(canvas, {
+                list: cloudData,
+                fontFamily: 'Arial, sans-serif',
+                fontWeight: 'bold',
+                color: function(word, weight) {
+                    return cloudData.find(item => item[0] === word)[2] || '#6b7280';
+                },
+                // 减少旋转以提高性能
+                rotateRatio: 0.2,
+                rotationSteps: 2,
+                backgroundColor: 'rgba(255,255,255,0)',
+                minRotation: -Math.PI / 16,
+                maxRotation: Math.PI / 16,
+                // 增加性能相关配置
+                shrinkToFit: true,
+                drawOutOfBound: false,
+                // 增加耐心度和降低阈值以减少中止可能性
+                wait: 100,
+                abortThreshold: 0.05,
+                gridSize: 8, // 较大的网格大小可以减少计算量
+                weightFactor: function (size) {
+                    return size * 0.8; // 减小整体字体大小
+                },
+                shape: 'circle',
+                ellipticity: 0.8, // 让形状更接近圆形，减少拉伸
+                clearCanvas: true,
+                abort: function() { 
+                    console.error('云图生成中止，尝试以备选方法显示'); 
+                    showFallbackCloud(cloudContainer, cloudData);
+                },
+                hover: function(item) {
+                    if (item) {
+                        const achievementId = Object.keys(achievements).find(id => 
+                            achievements[id].name.startsWith(item[0].replace('...', '')));
+                        
+                        if (achievementId) {
+                            canvas.title = achievements[achievementId].description;
+                        }
+                    }
+                },
+                click: function(item) {
+                    if (item) {
+                        const achievementId = Object.keys(achievements).find(id => 
+                            achievements[id].name.startsWith(item[0].replace('...', '')));
+                        
+                        if (achievementId) {
+                            // 查找该成就卡片并滚动到该位置
+                            const achievementElement = document.querySelector(`[data-achievement-id="${achievementId}"]`);
+                            if (achievementElement) {
+                                achievementElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                achievementElement.classList.add('highlight-achievement');
+                                setTimeout(() => {
+                                    achievementElement.classList.remove('highlight-achievement');
+                                }, 2000);
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 云图生成完成后移除加载指示器
+            WordCloud.isSupported && canvas.addEventListener('wordclouddrawn', function() {
+                if (loadingIndicator && loadingIndicator.parentNode) {
+                    loadingIndicator.parentNode.removeChild(loadingIndicator);
+                }
+                console.log("成就云图已成功生成");
+            });
+            
+        } catch (err) {
+            console.error("生成云图出错:", err);
+            showFallbackCloud(cloudContainer, cloudData);
+        }
+    } else {
+        console.error("WordCloud 库未加载！使用备选显示方式");
+        const cloudContainer = document.getElementById('achievement-cloud');
+        showFallbackCloud(cloudContainer, cloudData);
+    }
+}
+// 添加备选显示方法，当云图生成失败时使用
+function showFallbackCloud(container, cloudData) {
+    // 清除容器内容
+    while (container.firstChild) {
+        container.removeChild(container.firstChild);
+    }
+    
+    // 创建一个简单的标签云替代方案
+    const fallbackCloud = document.createElement('div');
+    fallbackCloud.className = 'p-4 flex flex-wrap gap-2 justify-center items-center h-full';
+    
+    cloudData.forEach(item => {
+        const tag = document.createElement('span');
+        tag.innerText = item[0];
+        tag.style.fontSize = `${item[1]}px`;
+        tag.style.color = item[2];
+        tag.className = 'px-2 py-1 rounded-full border hover:shadow-md transition-all cursor-pointer';
+        
+        // 添加悬停效果
+        tag.addEventListener('mouseover', () => {
+            tag.style.transform = 'scale(1.1)';
+        });
+        tag.addEventListener('mouseout', () => {
+            tag.style.transform = 'scale(1)';
+        });
+        
+        fallbackCloud.appendChild(tag);
+    });
+    
+    container.appendChild(fallbackCloud);
+    console.log("已使用备选方法显示成就云");
+}
+// 修改 window.resize 事件处理，添加节流功能以避免频繁重绘
+let resizeTimeout;
+window.addEventListener('resize', function() {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(function() {
+        const cloudContainer = document.getElementById('achievement-cloud');
+        if (cloudContainer && cloudContainer.offsetWidth > 100 && cloudContainer.offsetHeight > 100) {
+            generateAchievementCloud();
+        }
+    }, 500); // 延长防抖时间，减少不必要的重绘
+});
+
+            // 页面加载完成后生成云图
+            generateAchievementCloud();
+
+            // 添加样式，用于点击云图中成就时高亮对应成就卡片
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes highlight-pulse {
+                    0% { transform: scale(1); box-shadow: 0 0 0 rgba(59, 130, 246, 0.5); }
+                    50% { transform: scale(1.05); box-shadow: 0 0 20px rgba(59, 130, 246, 0.8); }
+                    100% { transform: scale(1); box-shadow: 0 0 0 rgba(59, 130, 246, 0.5); }
+                }
+                
+                .highlight-achievement {
+                    animation: highlight-pulse 1s ease-in-out;
+                }
+            `;
+            document.head.appendChild(style);
+
+            // 在生成成就卡片时添加data-achievement-id属性，以便云图点击时能定位到对应卡片
+            // 这部分代码应该位于渲染成就卡片的函数内
+            function renderAchievementCards() {
+                const achievementsGrid = document.getElementById('achievements-grid');
+                achievementsGrid.innerHTML = '';
+                
+                // 遍历所有成就
+                Object.entries(achievements).forEach(([id, achievement]) => {
+                    const card = document.createElement('div');
+                    card.className = 'achievement-card bg-white rounded-lg shadow-md overflow-hidden border-t-4';
+                    card.classList.add(`border-${achievement.color}-400`);
+                    card.setAttribute('data-achievement-id', id); // 添加ID属性用于云图点击定位
+                    
+                    // 成就卡片的内容...
+                    
+                    achievementsGrid.appendChild(card);
+                });
+            }
+
+            // 如果存在现有的成就卡片渲染函数，请确保添加data-achievement-id属性
         });
     </script>
 </body>

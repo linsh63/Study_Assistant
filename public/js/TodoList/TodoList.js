@@ -325,7 +325,8 @@ async function createTaskOnServer(task) {
 }
 
 // 原有的初始化函数保持不变，但需要将其移出 DOMContentLoaded 事件监听器
-function init() {
+// 修改初始化函数
+async function init() {
     // 设置当前日期和任务日期默认值
     const now = new Date();
     currentDate.textContent = formatDate(now);
@@ -343,6 +344,14 @@ function init() {
     
     // 设置事件监听器
     setupEventListeners();
+
+    // 确保导入课程表按钮已绑定
+    const importScheduleBtn = document.getElementById('import-schedule-btn');
+    if (importScheduleBtn) {
+        importScheduleBtn.addEventListener('click', importSchedule);
+    } else {
+        console.error('未找到导入课程表按钮');
+    }
 }
 
 // 常量定义
@@ -460,6 +469,14 @@ function setupEventListeners() {
     });
     
     scrollToNowWeekBtn.addEventListener('click', scrollToCurrentTimeWeek);
+
+    // 确保导入课程表按钮已绑定
+    const importScheduleBtn = document.getElementById('import-schedule-btn');
+    if (importScheduleBtn) {
+        importScheduleBtn.addEventListener('click', importSchedule);
+    } else {
+        console.error('未找到导入课程表按钮');
+    }
 }
 
 // 设置活动视图
@@ -2167,4 +2184,85 @@ function getTimePositionInHour(time) {
     const [hour, minute] = time.split(':').map(Number);
     // 假设每分钟1个像素，上方保留16像素
     return Math.floor(minute * (60 / 60)) + 5;
+}
+
+// 修改导入课程表函数
+async function importSchedule() {
+    try {
+        showLoadingIndicator(true);
+        console.log('开始导入课程...');
+
+        // 获取课程数据
+        const response = await fetch(`${API_URL}/courses/current`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('获取课程数据失败');
+        }
+
+        const courses = await response.json();
+        console.log('获取到课程数据:', courses);
+
+        if (!courses || courses.length === 0) {
+            showNotification('没有可导入的课程', 'warning');
+            return;
+        }
+
+        // 获取本周一的日期
+        const thisWeekMonday = getMonday(new Date());
+        
+        // 将课程转换为任务
+        const newTasks = courses.map(course => {
+            const courseDate = new Date(thisWeekMonday);
+            courseDate.setDate(courseDate.getDate() + (parseInt(course.weekDay) - 1));
+            
+            return {
+                text: `${course.name}${course.location ? ` - ${course.location}` : ''}`,
+                completed: 0,
+                priority: 'medium',
+                date: formatDateInput(courseDate),
+                time: course.startTime,
+                datetime: new Date(courseDate.setHours(
+                    parseInt(course.startTime.split(':')[0]),
+                    parseInt(course.startTime.split(':')[1]),
+                    0,
+                    0
+                )).toISOString(),
+                created_at: new Date().toISOString()
+            };
+        });
+
+        console.log('转换后的任务:', newTasks);
+
+        // 导入任务
+        const saveResponse = await fetch(`${API_URL}/tasks/import`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({ tasks: newTasks })
+        });
+
+        if (!saveResponse.ok) {
+            const errorData = await saveResponse.json();
+            throw new Error(errorData.message || '保存任务失败');
+        }
+
+        // 刷新任务列表
+        await fetchTasks();
+        
+        showNotification(`成功导入 ${newTasks.length} 个课程任务`, 'success');
+        
+    } catch (error) {
+        console.error('导入课程表失败:', error);
+        showNotification(error.message || '导入失败，请重试', 'error');
+    } finally {
+        showLoadingIndicator(false);
+    }
 }

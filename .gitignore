@@ -41,3 +41,4 @@ logs/
 # 数据库文件
 data/*
 !data/.gitkeep
+todos.db  # 添加这一行
