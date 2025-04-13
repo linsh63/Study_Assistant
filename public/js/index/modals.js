@@ -22,7 +22,7 @@ async function fetchCourses() {
     }
 }
 
-// 添加新课程
+// 修改 addCourse 函数
 async function addCourse(courseData) {
     try {
         const response = await fetch(`${API_URL}/courses`, {
@@ -30,6 +30,7 @@ async function addCourse(courseData) {
             headers: {
                 'Content-Type': 'application/json'
             },
+            credentials: 'include',  // 添加这行来确保发送凭证
             body: JSON.stringify(courseData)
         });
         
@@ -41,9 +42,11 @@ async function addCourse(courseData) {
         courses.push(newCourse);
         renderCourseTable();
         updateStatistics();
+        courseModal.style.display = 'none';  // 添加这行来关闭模态框
         showToast('课程添加成功', 'success');
     } catch (error) {
         showToast(error.message, 'error');
+        console.error('添加课程错误:', error);  // 添加错误日志
     }
 }
 
@@ -249,30 +252,72 @@ function validateForm() {
     return true;
 }
 
-// 保存课程
-function saveCourse() {
+// 修改保存课程函数
+async function saveCourse() {
     if (!validateForm()) return;
     
     const courseId = document.getElementById('courseId').value;
     const courseData = {
         name: document.getElementById('courseName').value,
         code: document.getElementById('courseCode').value,
-        teacher: document.getElementById('teacherName').value || '未指定', // 如果为空，使用默认值
+        teacher: document.getElementById('teacherName').value || '未指定',
         weekDay: parseInt(document.getElementById('weekDay').value),
         type: document.getElementById('courseType').value,
         startTime: document.getElementById('startTime').value,
         endTime: document.getElementById('endTime').value,
-        location: document.getElementById('location').value || '未指定', // 如果为空，使用默认值
+        location: document.getElementById('location').value || '未指定',
         color: document.getElementById('courseColor').value,
         note: document.getElementById('courseNote').value
     };
     
-    if (courseId) {
-        // 更新现有课程
-        updateCourse(parseInt(courseId), courseData);
-    } else {
-        // 添加新课程
-        addCourse(courseData);
+    try {
+        if (courseId) {
+            // 更新现有课程
+            await updateCourse(parseInt(courseId), courseData);
+        } else {
+            // 添加新课程
+            const newCourse = await addCourseSilently(courseData);
+            courses.push(newCourse);
+        }
+        
+        // 更新所有视图
+        renderCourseTable();
+        renderWeekView();
+        updateStatistics();
+        
+        // 关闭模态框并显示成功提示
+        courseModal.style.display = 'none';
+        showToast('课程保存成功', 'success');
+        
+        // 触发课程渲染完成事件
+        document.dispatchEvent(new Event('coursesRendered'));
+    } catch (error) {
+        console.error('保存课程失败:', error);
+        showToast('保存课程失败', 'error');
+    }
+}
+
+// 修改 addCourseSilently 函数
+async function addCourseSilently(courseData) {
+    try {
+        const response = await fetch(`${API_URL}/courses`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',  // 添加凭证
+            body: JSON.stringify(courseData)
+        });
+        
+        if (!response.ok) {
+            throw new Error('添加课程失败');
+        }
+        
+        const newCourse = await response.json();
+        return newCourse;
+    } catch (error) {
+        console.error('添加课程错误:', error);
+        throw error;
     }
 }
 
@@ -480,151 +525,3 @@ document.querySelectorAll('.view-option').forEach((option, index) => {
 });
 
         // ... 保留原有代码 ...
-
-// 修改导入功能
-document.getElementById('importBtn').addEventListener('click', () => {
-    // 显示导入选项
-    showImportOptions();
-});
-
-// 显示导入选项
-function showImportOptions() {
-    // 创建一个模态框来选择导入方式
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.style.display = 'flex';
-    
-    modal.innerHTML = `
-        <div class="modal-content" style="width: 400px;">
-            <div class="modal-header">
-                <h3>选择导入方式</h3>
-                <span class="close-btn" id="closeImportOptionsModal">&times;</span>
-            </div>
-            
-            <div class="modal-body">
-                <div class="import-options">
-                    <button class="btn btn-outline" id="importJsonBtn" style="margin-bottom: 10px; width: 100%;">
-                        <i class="fas fa-file-code"></i> 从JSON文件导入
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    // 关闭按钮事件
-    document.getElementById('closeImportOptionsModal').addEventListener('click', () => {
-        document.body.removeChild(modal);
-    });
-    
-    // JSON导入按钮事件
-    document.getElementById('importJsonBtn').addEventListener('click', () => {
-        document.body.removeChild(modal);
-        importFromJson();
-    });
-    
-    // 图片导入按钮事件
-    document.getElementById('importImageBtn').addEventListener('click', () => {
-        document.body.removeChild(modal);
-        importFromImage();
-    });
-}
-
-// 从JSON文件导入
-function importFromJson() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    
-    input.onchange = e => {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        
-        reader.onload = async event => {
-            try {
-                const importedCourses = JSON.parse(event.target.result);
-                
-                // 验证导入的数据格式
-                if (!Array.isArray(importedCourses)) {
-                    throw new Error('导入的数据格式不正确');
-                }
-                
-                // 替换所有课程
-                for (const course of importedCourses) {
-                    await addCourse(course);
-                }
-                
-                showToast('课程导入成功', 'success');
-                fetchCourses();
-            } catch (error) {
-                showToast('导入失败: ' + error.message, 'error');
-            }
-        };
-        
-        reader.readAsText(file);
-    };
-    
-    input.click();
-}
-
-
-// 格式化时间为HH:MM格式
-function formatTime(timeStr) {
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-}
-
-// 生成随机颜色
-function getRandomColor() {
-    const colors = [
-        '#4a6fa5', '#6c8fc7', '#ff7e5f', '#63b7af', 
-        '#b5ea8c', '#f0a04b', '#9e579d', '#574b90'
-    ];
-    return colors[Math.floor(Math.random() * colors.length)];
-}
-
-// 添加样式
-const styleElement = document.createElement('style');
-styleElement.textContent = `
-    .progress-bar {
-        width: 100%;
-        height: 10px;
-        background-color: #f0f0f0;
-        border-radius: 5px;
-        overflow: hidden;
-        margin: 10px 0;
-    }
-    
-    .progress-bar-fill {
-        height: 100%;
-        background-color: var(--primary-color);
-        transition: width 0.3s ease;
-    }
-    
-    .table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    
-    .table th, .table td {
-        padding: 8px;
-        border: 1px solid #ddd;
-    }
-    
-    .table th {
-        background-color: #f5f5f5;
-        text-align: left;
-    }
-    
-    .btn-sm {
-        padding: 5px 10px;
-        font-size: 12px;
-    }
-`;
-document.head.appendChild(styleElement);
-
-// ... 保留原有代码 ...
-
-// 初始化页面
-fetchCourses();

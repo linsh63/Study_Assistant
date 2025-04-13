@@ -278,9 +278,11 @@ button.text-sm {
     padding: 0.4rem 0.8rem !important; /* 增大按钮大小 */
 }
 
-/* 全局字体大小调整 */
+/* 修改全局背景色 */
 body {
-    font-size: 16px; /* 增加基础字体大小 */
+    background: linear-gradient(135deg, #fdf2f8 0%, #fbcfe8 100%);  /* 浅粉色渐变背景 */
+    min-height: 100vh;
+    font-size: 16px;
 }
 
 /* 列表视图的调整 */
@@ -461,11 +463,42 @@ body {
     margin-right: 5px !important;
 }
 
-/* 通用容器宽度调整 */
+/* 修改容器背景，增加半透明效果 */
 .container {
-    max-width: 900px !important; /* 减小整体容器宽度 */
+    background: rgba(255, 255, 255, 0.95);
+    max-width: 900px !important;
     margin-left: auto !important;
     margin-right: auto !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+/* 添加动态背景效果 */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 10% 10%, #fbcfe8 0%, transparent 20%),
+                radial-gradient(circle at 90% 90%, #f9a8d4 0%, transparent 20%);
+    z-index: -1;
+    opacity: 0.1;
+    animation: moveBackground 30s linear infinite;
+}
+
+@keyframes moveBackground {
+    0% {
+        transform: translate(0, 0);
+    }
+    50% {
+        transform: translate(10%, 10%);
+    }
+    100% {
+        transform: translate(0, 0);
+    }
 }
 
 /* 增强任务文本区域 */
@@ -506,4 +539,158 @@ body {
         padding: 0.25rem 0.5rem;
         font-size: 0.75rem;
     }
+}
+
+/* 主题颜色选择器样式 */
+.bg-theme-selector {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.theme-color-btn {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.theme-color-btn:hover {
+    transform: scale(1.1);
+}
+
+.theme-color-btn.active {
+    border-color: white;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+/* 主题背景样式 */
+body.theme-pink {
+    background: linear-gradient(135deg, #fdf2f8 0%, #fbcfe8 100%);
+}
+
+body.theme-blue {
+    background: linear-gradient(135deg, #eff6ff 0%, #bfdbfe 100%);
+}
+
+body.theme-purple {
+    background: linear-gradient(135deg, #f5f3ff 0%, #ddd6fe 100%);
+}
+
+body.theme-green {
+    background: linear-gradient(135deg, #ecfdf5 0%, #a7f3d0 100%);
+}
+
+/* 动态背景效果对应的主题色 */
+body.theme-pink::before {
+    background: radial-gradient(circle at 10% 10%, #fbcfe8 0%, transparent 20%),
+                radial-gradient(circle at 90% 90%, #f9a8d4 0%, transparent 20%);
+}
+
+body.theme-blue::before {
+    background: radial-gradient(circle at 10% 10%, #bfdbfe 0%, transparent 20%),
+                radial-gradient(circle at 90% 90%, #93c5fd 0%, transparent 20%);
+}
+
+body.theme-purple::before {
+    background: radial-gradient(circle at 10% 10%, #ddd6fe 0%, transparent 20%),
+                radial-gradient(circle at 90% 90%, #c4b5fd 0%, transparent 20%);
+}
+
+body.theme-green::before {
+    background: radial-gradient(circle at 10% 10%, #a7f3d0 0%, transparent 20%),
+                radial-gradient(circle at 90% 90%, #6ee7b7 0%, transparent 20%);
+}
+
+/* 导出功能样式 */
+.export-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.export-progress {
+    background: white;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* 确保周视图在导出时有正确的背景色 */
+#week-view {
+    background: white;
+}
+
+.exporting {
+    position: relative;
+}
+
+/* 优化顶部栏样式 */
+.bg-gradient-to-r {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 视图切换按钮组样式优化 */
+.view-switch-btn {
+    transition: all 0.2s ease;
+    font-weight: 500;
+    min-width: 80px;
+}
+
+.view-switch-btn:hover {
+    transform: translateY(-1px);
+}
+
+/* 主题选择器样式优化 */
+.bg-theme-selector {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.theme-color-btn {
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.theme-color-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* 任务计数样式优化 */
+#task-count {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    font-weight: 500;
+    min-width: 80px;
+    text-align: center;
+}
+
+/* 主页按钮样式优化 */
+#homeBtn {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    font-weight: 500;
+    min-width: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#homeBtn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* 用户名样式优化 */
+#username {
+    font-weight: 500;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }

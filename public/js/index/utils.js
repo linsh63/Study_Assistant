@@ -399,11 +399,12 @@ cancelBtn.addEventListener('click', () => {
     courseModal.style.display = 'none';
 });
 
-saveCourseBtn.addEventListener('click', () => {
+// 修改保存课程按钮的事件监听
+saveCourseBtn.addEventListener('click', async (e) => {
+    e.preventDefault(); // 阻止表单默认提交
     if(validateForm()) {
-        saveCourse();
+        await saveCourse(); // 等待保存完成
         courseModal.style.display = 'none';
-        showToast('课程保存成功', 'success');
     }
 });
 

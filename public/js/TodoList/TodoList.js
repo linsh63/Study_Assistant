@@ -236,7 +236,7 @@ async function reconcileTasks(localTasks, serverTasks) {
     }
 }
 
-// 更新服务器上的任务
+// 修改 updateTaskOnServer 函数
 async function updateTaskOnServer(taskId, task) {
     try {
         const taskDateObj = new Date(task.date);
@@ -252,7 +252,7 @@ async function updateTaskOnServer(taskId, task) {
             datetime: taskDateObj.toISOString()
         };
         
-        await fetch(`${API_URL}/todo-tasks/${taskId}`, {
+        const response = await fetch(`${API_URL}/todo-tasks/${taskId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
@@ -260,11 +260,26 @@ async function updateTaskOnServer(taskId, task) {
             credentials: 'include',
             body: JSON.stringify(taskUpdate)
         });
+
+        if (!response.ok) {
+            throw new Error('更新任务失败');
+        }
+
+        // 更新本地任务数据
+        const index = tasks.findIndex(t => t.id === taskId);
+        if (index !== -1) {
+            tasks[index] = { ...tasks[index], ...taskUpdate };
+            // 保存到本地存储
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            // 更新所有视图
+            updateAllViews();
+        }
     } catch (error) {
         console.error('更新服务器任务失败:', error);
         throw error;
     }
 }
+
 
 // 创建任务对象
 function createTaskObject(text, date, time, priority) {
@@ -403,6 +418,30 @@ let currentFilter = 'all';
 let currentDayViewDate = new Date();
 let currentWeekStartDate = getMonday(new Date());
 
+// 主题切换功能
+document.querySelectorAll('.theme-color-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        // 移除所有主题类
+        document.body.classList.remove('theme-pink', 'theme-blue', 'theme-purple', 'theme-green');
+        // 添加新主题类
+        document.body.classList.add(`theme-${btn.dataset.theme}`);
+        
+        // 更新按钮激活状态
+        document.querySelectorAll('.theme-color-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        // 保存主题选择到本地存储
+        localStorage.setItem('preferred-theme', btn.dataset.theme);
+    });
+});
+
+// 加载保存的主题
+document.addEventListener('DOMContentLoaded', () => {
+    const savedTheme = localStorage.getItem('preferred-theme') || 'pink';
+    document.body.classList.add(`theme-${savedTheme}`);
+    document.querySelector(`.theme-color-btn[data-theme="${savedTheme}"]`)?.classList.add('active');
+});
+
 // 设置事件监听器
 function setupEventListeners() {
     // 添加任务事件
@@ -476,6 +515,91 @@ function setupEventListeners() {
         importScheduleBtn.addEventListener('click', importSchedule);
     } else {
         console.error('未找到导入课程表按钮');
+    }
+
+    // 添加导出按钮事件监听
+    const exportWeekBtn = document.getElementById('export-week-btn');
+    if (exportWeekBtn) {
+        exportWeekBtn.addEventListener('click', exportWeekView);
+    }
+}
+
+// 修改导出周视图功能
+async function exportWeekView() {
+    try {
+        // 创建加载遮罩
+        const overlay = document.createElement('div');
+        overlay.className = 'export-overlay';
+        overlay.innerHTML = `
+            <div class="export-progress">
+                <i class="fas fa-spinner fa-spin text-2xl text-blue-500 mb-3"></i>
+                <p>正在生成图片，请稍候...</p>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        // 获取周视图元素
+        const weekView = document.getElementById('week-view');
+        
+        // 获取完整的表格元素
+        const weekTable = document.getElementById('week-timeline');
+        
+        // 临时添加导出类
+        weekView.classList.add('exporting');
+        
+        // 确保表格完全展开
+        const tableContainer = weekView.querySelector('.p-4');
+        const originalHeight = tableContainer.style.height;
+        tableContainer.style.height = 'auto';
+
+        // 配置html2canvas选项
+        const options = {
+            backgroundColor: '#ffffff',
+            scale: 2, // 提高导出质量
+            useCORS: true, // 允许加载跨域图片
+            logging: false,
+            width: weekTable.offsetWidth,
+            height: weekTable.offsetHeight,
+            windowWidth: weekTable.offsetWidth,
+            windowHeight: weekTable.offsetHeight
+        };
+
+        // 生成canvas
+        const canvas = await html2canvas(weekTable, options);
+
+        // 恢复原始高度
+        tableContainer.style.height = originalHeight;
+
+        // 转换为图片
+        const image = canvas.toDataURL('image/png');
+
+        // 创建下载链接
+        const link = document.createElement('a');
+        const date = new Date(currentWeekStartDate);
+        const fileName = `周视图_${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}.png`;
+        link.download = fileName;
+        link.href = image;
+        link.click();
+
+        // 清理
+        weekView.classList.remove('exporting');
+        document.body.removeChild(overlay);
+
+        // 显示成功提示
+        showNotification('周视图已成功导出为图片', 'success');
+    } catch (error) {
+        console.error('导出周视图失败:', error);
+        showNotification('导出失败: ' + error.message, 'error');
+        
+        // 清理
+        const overlay = document.querySelector('.export-overlay');
+        if (overlay) {
+            document.body.removeChild(overlay);
+        }
+        const weekView = document.getElementById('week-view');
+        if (weekView) {
+            weekView.classList.remove('exporting');
+        }
     }
 }
 
@@ -787,7 +911,56 @@ function createTaskElement(task) {
     return taskElement;
 }
 
-// 渲染日视图
+
+// 添加创建时间块的辅助函数
+function createTimeBlock(hour, tasks) {
+    const timeBlock = document.createElement('div');
+    timeBlock.className = 'time-block mb-6';
+    timeBlock.id = `hour-${hour}`;
+    
+    // 添加小时标记
+    const hourMarker = document.createElement('div');
+    hourMarker.className = 'hour-marker';
+    hourMarker.textContent = hour;
+    
+    // 如果是当前小时，添加特殊样式
+    const now = new Date();
+    if (isSameDay(currentDayViewDate, now) && now.getHours() === hour) {
+        hourMarker.classList.add('bg-red-500');
+    }
+    
+    timeBlock.appendChild(hourMarker);
+    
+    // 添加小时标题
+    const hourTitle = document.createElement('div');
+    hourTitle.className = 'text-sm font-semibold mb-2 mt-0 text-gray-600';
+    hourTitle.textContent = `${hour.toString().padStart(2, '0')}:00`;
+    timeBlock.appendChild(hourTitle);
+    
+    // 添加任务
+    tasks.forEach(task => {
+        const taskElement = createDayViewTaskElement(task);
+        timeBlock.appendChild(taskElement);
+    });
+    
+    return timeBlock;
+}
+
+// 修改更新所有视图的函数
+function updateAllViews() {
+    // 更新列表视图
+    renderTasks();
+    updateTaskCount();
+    
+    // 根据当前显示的视图更新
+    if (dayView.classList.contains('view-visible')) {
+        renderDayView();
+    } else if (weekView.classList.contains('view-visible')) {
+        renderWeekView();
+    }
+}
+
+// 修改 renderDayView 函数
 function renderDayView() {
     // 更新日期显示
     dayViewDate.textContent = formatFullDate(currentDayViewDate);
@@ -797,114 +970,44 @@ function renderDayView() {
     
     // 获取该日期的任务
     const selectedDate = formatDateInput(currentDayViewDate);
-    const tasksForDay = tasks.filter(task => task.date === selectedDate && filterTaskByCurrentFilter(task));
-    
-    // 过滤出6:00-23:00范围内的任务
-    const tasksInTimeRange = tasksForDay.filter(task => {
-        const hour = parseInt(task.time.split(':')[0]);
-        return hour >= 6 && hour <= 23;
-    });
+    const tasksForDay = tasks.filter(task => 
+        task.date === selectedDate && 
+        filterTaskByCurrentFilter(task)
+    ).sort((a, b) => a.time.localeCompare(b.time));
     
     // 如果没有任务，显示空状态
-    if (tasksInTimeRange.length === 0) {
+    if (tasksForDay.length === 0) {
         const emptyState = document.createElement('div');
         emptyState.className = 'text-center py-8 text-gray-400';
-        emptyState.innerHTML = `<i class="fas fa-calendar-day text-4xl mb-2"></i><p>这一天没有任务</p>`;
+        emptyState.innerHTML = `
+            <i class="fas fa-calendar-day text-4xl mb-2"></i>
+            <p>这一天没有任务</p>
+        `;
         timeline.appendChild(emptyState);
-    } else {
-        // 找出所有有任务的小时
-        const hoursWithTasks = new Set();
-        tasksInTimeRange.forEach(task => {
-            const hour = parseInt(task.time.split(':')[0]);
-            hoursWithTasks.add(hour);
+        return;
+    }
+    
+    // 创建时间块（6:00-23:00）
+    for (let hour = 6; hour <= 23; hour++) {
+        const hourTasks = tasksForDay.filter(task => {
+            const taskHour = parseInt(task.time.split(':')[0]);
+            return taskHour === hour;
         });
         
-        // 只创建有任务的小时块
-        Array.from(hoursWithTasks).sort((a, b) => a - b).forEach(hour => {
-            const hourTasks = tasksInTimeRange.filter(task => {
-                const taskHour = parseInt(task.time.split(':')[0]);
-                return taskHour === hour;
-            });
-            
-            // 只有当有任务时才创建时间块
-            if (hourTasks.length > 0) {
-                const timeBlock = document.createElement('div');
-                timeBlock.className = 'time-block mb-6';
-                timeBlock.id = `hour-${hour}`;
-                
-                // 如果是当前日期和小时，添加标记
-                const now = new Date();
-                const isCurrentHour = isSameDay(currentDayViewDate, now) && now.getHours() === hour;
-                
-                // 添加小时标记
-                const hourMarker = document.createElement('div');
-                hourMarker.className = 'hour-marker';
-                hourMarker.textContent = hour;
-                
-                if (isCurrentHour) {
-                    hourMarker.classList.add('bg-red-500');
-                }
-                
-                timeBlock.appendChild(hourMarker);
-                
-                // 添加小时标题
-                const hourTitle = document.createElement('div');
-                hourTitle.className = 'text-sm font-semibold mb-2 mt-0 text-gray-600';
-                hourTitle.textContent = `${hour}:00`;
-                timeBlock.appendChild(hourTitle);
-                
-                // 添加任务
-                hourTasks.forEach(task => {
-                    const taskElement = createDayViewTaskElement(task);
-                    timeBlock.appendChild(taskElement);
-                });
-                
-                timeline.appendChild(timeBlock);
-            }
-        });
+        // 只显示有任务的时间块
+        if (hourTasks.length > 0) {
+            const timeBlock = createTimeBlock(hour, hourTasks);
+            timeline.appendChild(timeBlock);
+        }
     }
     
-    // 如果是当前日期，添加当前时间线（仅当当前时间在6:00-23:00范围内且当前小时有任务）
+    // 添加当前时间线（如果是当天）
     const now = new Date();
-    const currentHour = now.getHours();
-    if (isSameDay(currentDayViewDate, now) && currentHour >= 6 && currentHour <= 23) {
-        const hourHasTasks = tasksInTimeRange.some(task => parseInt(task.time.split(':')[0]) === currentHour);
-        if (hourHasTasks) {
-            addCurrentTimeLine();
-        }
+    if (isSameDay(currentDayViewDate, now)) {
+        addCurrentTimeLine();
+        // 自动滚动到当前时间
+        setTimeout(scrollToCurrentTime, 100);
     }
-    
-    // 自动滚动到当前时间或第一个任务
-    setTimeout(() => {
-        if (isSameDay(currentDayViewDate, now)) {
-            // 检查当前小时是否有任务
-            const currentHourHasTasks = tasksInTimeRange.some(task => 
-                parseInt(task.time.split(':')[0]) === currentHour
-            );
-            
-            if (currentHour >= 6 && currentHour <= 23 && currentHourHasTasks) {
-                // 如果当前小时有任务，滚动到当前时间
-                const hourElement = document.getElementById(`hour-${currentHour}`);
-                if (hourElement) {
-                    hourElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            } else if (tasksInTimeRange.length > 0) {
-                // 否则滚动到第一个任务
-                const firstTaskHour = findFirstTaskHour(tasksInTimeRange);
-                const firstHourElement = document.getElementById(`hour-${firstTaskHour}`);
-                if (firstHourElement) {
-                    firstHourElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            }
-        } else if (tasksInTimeRange.length > 0) {
-            // 非当天，滚动到第一个任务
-            const firstTaskHour = findFirstTaskHour(tasksInTimeRange);
-            const firstHourElement = document.getElementById(`hour-${firstTaskHour}`);
-            if (firstHourElement) {
-                firstHourElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        }
-    }, 50);
 }
 
 // 创建日视图任务元素

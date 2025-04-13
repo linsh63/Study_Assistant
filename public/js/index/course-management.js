@@ -366,8 +366,20 @@
         }
     });
     
-    // 触发课程渲染完成事件
-    document.dispatchEvent(new CustomEvent('coursesRendered'));
+    // 添加课程渲染完成事件监听
+    document.addEventListener('coursesRendered', () => {
+        const activeView = document.querySelector('.view-option.active');
+        if (activeView) {
+            const viewType = activeView.dataset.view;
+            if (viewType === 'week') {
+                renderWeekView();
+            } else if (viewType === 'day') {
+                renderDayView();
+            } else {
+                renderCourseTable();
+            }
+        }
+    });
 
     // 获取所有可用的颜色
     function getAllColors() {
