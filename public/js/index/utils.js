@@ -271,9 +271,8 @@ function validateBatchForm() {
     return true;
 }
 
- // 保存批量导入的课程 - 重写为使用单个导入功能
- function saveBatchCourses() {
-    // 获取基本信息
+ // 修改 saveBatchCourses 函数
+async function saveBatchCourses() {
     const courseName = document.getElementById('batchCourseName').value.trim();
     const courseCode = document.getElementById('batchCourseCode').value.trim();
     const teacherName = document.getElementById('batchTeacherName').value.trim();
@@ -282,23 +281,18 @@ function validateBatchForm() {
     const courseColor = document.getElementById('batchCourseColor').value;
     const courseNote = document.getElementById('batchCourseNote').value.trim();
     
-    // 获取选中的时间段
     const selectedTimeSlots = document.querySelectorAll('.time-slot-checkbox:checked');
-    
-    // 创建课程数组以跟踪所有要添加的课程
     const newCourses = [];
     
-    // 为每个选中的时间段创建一个课程对象
     selectedTimeSlots.forEach(slot => {
         const weekDay = parseInt(slot.dataset.day);
         const startTime = slot.dataset.startTime;
         const endTime = slot.dataset.endTime;
         
-        // 创建与单个导入相同结构的课程数据对象
         const courseData = {
             name: courseName,
             code: courseCode,
-            teacher: teacherName || '未指定', // 与单个导入保持一致
+            teacher: teacherName || '未指定',
             weekDay: weekDay,
             startTime: startTime,
             endTime: endTime,
@@ -308,31 +302,39 @@ function validateBatchForm() {
             note: courseNote
         };
         
-        // 将课程添加到数组中
         newCourses.push(courseData);
     });
     
-    // 使用Promise.all同时处理所有课程添加
-    Promise.all(newCourses.map(course => {
-        // 调用单个课程添加函数
-        return new Promise((resolve) => {
-            // 使用现有的addCourse函数添加课程
-            // 但我们需要避免每次添加都更新UI，所以这里创建一个静默版本
-            addCourseSilently(course).then(resolve);
-        });
-    })).then(() => {
-        // 所有课程添加完成后，一次性更新UI
+    try {
+        // 使用 Promise.all 并行处理所有课程添加
+        const addedCourses = await Promise.all(newCourses.map(course => addCourseSilently(course)));
+        
+        // 将新课程添加到本地数组
+        courses.push(...addedCourses);
+        
+        // 立即更新所有视图
         renderCourseTable();
         updateStatistics();
+        
+        // 如果存在周视图和日视图，也更新它们
+        if (typeof renderWeekView === 'function') {
+            renderWeekView();
+        }
+        if (typeof renderDayView === 'function') {
+            renderDayView();
+        }
+        
         showToast(`成功批量导入 ${newCourses.length} 门课程`, 'success');
-    }).catch(error => {
-        // 修改这里，不再显示错误提示，而是记录到控制台
+        
+        // 保存到本地存储
+        localStorage.setItem('courses', JSON.stringify(courses));
+        
+        // 关闭模态框
+        batchImportModal.style.display = 'none';
+    } catch (error) {
         console.error('批量导入错误:', error);
-        // 即使有错误，也显示成功信息，因为部分课程可能已经成功添加
-        renderCourseTable();
-        updateStatistics();
-        showToast(`课程批量导入完成`, 'success');
-    });
+        showToast('部分课程可能导入失败，请检查', 'warning');
+    }
 }
 
 // 静默添加课程的辅助函数（不更新UI）

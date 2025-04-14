@@ -78,7 +78,6 @@ async function updateCourse(id, courseData) {
     }
 }
 
-// 修改删除课程函数，添加批量删除模式参数
 async function deleteCourseFromServer(id, batchMode = false) {
     try {
         const response = await fetch(`${API_URL}/courses/${id}`, {
@@ -89,11 +88,23 @@ async function deleteCourseFromServer(id, batchMode = false) {
             throw new Error('删除课程失败');
         }
         
+        // 更新本地数据
         courses = courses.filter(c => c.id !== id);
         
         // 只有在非批量模式下才更新UI和显示提示
         if (!batchMode) {
+            // 获取当前激活的视图
+            const activeView = document.querySelector('.view-option.active').dataset.view;
+            
+            // 更新所有视图
             renderCourseTable();
+            renderWeekView();
+            
+            // 如果当前是日视图，更新日视图
+            if (activeView === 'day') {
+                renderDayView(currentDayIndex);
+            }
+            
             updateStatistics();
             showToast('课程删除成功', 'success');
         }
@@ -253,6 +264,7 @@ function validateForm() {
 }
 
 // 修改保存课程函数
+// 修改为异步函数
 async function saveCourse() {
     if (!validateForm()) return;
     
@@ -338,9 +350,32 @@ function deleteCourse(id) {
     confirmDeleteBtn.replaceWith(confirmDeleteBtn.cloneNode(true));
     
     // 添加新的事件监听器
-    document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
-        deleteCourseFromServer(id);
-        confirmModal.style.display = 'none';
+    document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+        try {
+            await deleteCourseFromServer(id);
+            
+            // 更新本地数据
+            courses = courses.filter(c => c.id !== id);
+            
+            // 更新所有视图
+            renderCourseTable();
+            renderWeekView();
+            updateStatistics();
+            
+            // 如果存在日视图，也更新它
+            if (typeof renderDayView === 'function') {
+                renderDayView();
+            }
+            
+            // 保存到本地存储
+            localStorage.setItem('courses', JSON.stringify(courses));
+            
+            confirmModal.style.display = 'none';
+            showToast('课程删除成功', 'success');
+        } catch (error) {
+            console.error('删除课程失败:', error);
+            showToast('删除课程失败', 'error');
+        }
     });
 }
 
@@ -523,5 +558,3 @@ document.querySelectorAll('.view-option').forEach((option, index) => {
         // 这里可以实现不同视图的切换逻辑
     });
 });
-
-        // ... 保留原有代码 ...

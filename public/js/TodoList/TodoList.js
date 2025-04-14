@@ -524,7 +524,6 @@ function setupEventListeners() {
     }
 }
 
-// 修改导出周视图功能
 async function exportWeekView() {
     try {
         // 创建加载遮罩
@@ -540,35 +539,43 @@ async function exportWeekView() {
 
         // 获取周视图元素
         const weekView = document.getElementById('week-view');
-        
-        // 获取完整的表格元素
         const weekTable = document.getElementById('week-timeline');
+        const scrollContainer = weekView.querySelector('.scroll-container');
         
-        // 临时添加导出类
+        // 保存原始状态
+        const originalHeight = scrollContainer.style.height;
+        const originalOverflow = scrollContainer.style.overflow;
+        const originalPosition = scrollContainer.style.position;
+        
+        // 临时修改样式以捕获完整内容
         weekView.classList.add('exporting');
-        
-        // 确保表格完全展开
-        const tableContainer = weekView.querySelector('.p-4');
-        const originalHeight = tableContainer.style.height;
-        tableContainer.style.height = 'auto';
+        scrollContainer.style.height = 'auto';
+        scrollContainer.style.overflow = 'visible';
+        scrollContainer.style.position = 'relative';
 
         // 配置html2canvas选项
         const options = {
             backgroundColor: '#ffffff',
             scale: 2, // 提高导出质量
-            useCORS: true, // 允许加载跨域图片
+            useCORS: true,
             logging: false,
-            width: weekTable.offsetWidth,
-            height: weekTable.offsetHeight,
             windowWidth: weekTable.offsetWidth,
-            windowHeight: weekTable.offsetHeight
+            windowHeight: weekTable.scrollHeight,
+            width: weekTable.offsetWidth,
+            height: weekTable.scrollHeight,
+            onclone: (clonedDoc) => {
+                // 确保克隆的元素也应用了正确的样式
+                const clonedContainer = clonedDoc.querySelector('.scroll-container');
+                if (clonedContainer) {
+                    clonedContainer.style.height = 'auto';
+                    clonedContainer.style.overflow = 'visible';
+                    clonedContainer.style.position = 'relative';
+                }
+            }
         };
 
         // 生成canvas
         const canvas = await html2canvas(weekTable, options);
-
-        // 恢复原始高度
-        tableContainer.style.height = originalHeight;
 
         // 转换为图片
         const image = canvas.toDataURL('image/png');
@@ -581,11 +588,13 @@ async function exportWeekView() {
         link.href = image;
         link.click();
 
-        // 清理
+        // 恢复原始状态
+        scrollContainer.style.height = originalHeight;
+        scrollContainer.style.overflow = originalOverflow;
+        scrollContainer.style.position = originalPosition;
         weekView.classList.remove('exporting');
         document.body.removeChild(overlay);
 
-        // 显示成功提示
         showNotification('周视图已成功导出为图片', 'success');
     } catch (error) {
         console.error('导出周视图失败:', error);

@@ -210,7 +210,7 @@
     let currentDayIndex = new Date().getDay() || 7; // 获取当前是星期几，周日返回0，转换为7
     
     // 渲染日视图
-    function renderDayView(dayIndex) {
+    function renderDayView(dayIndex = currentDayIndex) {  // 使用当前日期作为默认值
         const dayNames = ['一', '二', '三', '四', '五', '六', '日'];
         document.getElementById('currentDay').textContent = `星期${dayNames[dayIndex - 1]}`;
         
@@ -275,7 +275,12 @@
             timeSlot.appendChild(slotContent);
             dayScheduleContainer.appendChild(timeSlot);
         });
-    }
+    // 在最后添加：恢复样式设置
+    restoreStyleSettings();
+    
+    // 更新当前日期索引
+    currentDayIndex = dayIndex;
+}
     
     // 日视图导航
     document.getElementById('prevDay').addEventListener('click', () => {
