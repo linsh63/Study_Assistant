@@ -522,6 +522,65 @@ function setupEventListeners() {
     if (exportWeekBtn) {
         exportWeekBtn.addEventListener('click', exportWeekView);
     }
+
+    // 添加列表视图跳转到现在的功能
+    // 修改跳转到现在的功能实现
+    document.getElementById('scroll-to-now-list').addEventListener('click', () => {
+        const now = new Date();
+        const today = formatDateInput(now);
+        const currentTime = now.getHours().toString().padStart(2, '0') + ':' + 
+                            now.getMinutes().toString().padStart(2, '0');
+
+        // 查找当前时间最近的任务元素
+        const taskElements = document.querySelectorAll('#task-list .task-item');
+        let targetElement = null;
+        let closestFutureTask = null;
+        let closestFutureTime = null;
+        
+        // 先查找今天的任务
+        for (const element of taskElements) {
+            const taskDate = element.getAttribute('data-date');
+            const taskTime = element.getAttribute('data-time');
+            
+            if (taskDate === today && taskTime >= currentTime) {
+                if (!closestFutureTask || taskTime < closestFutureTime) {
+                    closestFutureTask = element;
+                    closestFutureTime = taskTime;
+                }
+            }
+        }
+        
+        // 如果今天没有找到，查找未来最近的任务
+        if (!closestFutureTask) {
+            let closestFutureDate = null;
+            
+            for (const element of taskElements) {
+                const taskDate = element.getAttribute('data-date');
+                
+                if (taskDate > today) {
+                    if (!closestFutureDate || taskDate < closestFutureDate) {
+                        closestFutureTask = element;
+                        closestFutureDate = taskDate;
+                    }
+                }
+            }
+        }
+        
+        // 使用找到的最近任务
+        targetElement = closestFutureTask;
+
+        // 如果找到目标元素，滚动到该位置
+        if (targetElement) {
+            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // 添加短暂的高亮效果
+            targetElement.classList.add('highlight');
+            setTimeout(() => {
+                targetElement.classList.remove('highlight');
+            }, 2000);
+        } else {
+            showNotification('没有找到当前时间之后的任务', 'info');
+        }
+    });
 }
 
 async function exportWeekView() {
@@ -822,6 +881,9 @@ function createTaskElement(task) {
     const taskElement = document.createElement('div');
     taskElement.className = `task-item flex items-center p-4 hover:bg-gray-50 priority-${task.priority}`;
     taskElement.dataset.id = task.id;
+    // 添加日期和时间属性
+    taskElement.setAttribute('data-date', task.date);
+    taskElement.setAttribute('data-time', task.time);
     
     // 完成复选框
     const completeCheckbox = document.createElement('input');
