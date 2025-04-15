@@ -77,25 +77,24 @@
 
 ## 安装步骤
 
-1. **克隆项目到本地**：
+1. **配置环境**：
+   - 安装Node.js环境（推荐v14.0.0以上版本）
+   - 安装npm包管理器
+
+2. **克隆项目到本地**：
    ```bash
    git clone https://github.com/linsh63/Study_Assistant.git
    ```
 
-2. **进入项目目录**：
+3. **进入项目目录**：
    ```bash
    cd Study_Assistant
    ```
 
-3. **安装依赖**：
+4. **安装依赖**：
    ```bash
    npm install
    ```
-
-4. **配置环境**：
-   - 确保已安装Node.js环境（推荐v14.0.0以上版本）
-   - 项目会自动创建SQLite数据库文件在data目录下
-   - 确保uploads目录存在，用于文件上传
 
 ## 运行说明
 
@@ -153,17 +152,3 @@
 - 确保3000端口未被占用
 - 建议使用现代浏览器（Chrome、Firefox、Edge等）访问应用
 - 本地开发环境中，数据存储在SQLite数据库文件中
-
-## 贡献指南
-
-欢迎贡献代码或提出建议：
-
-1. Fork项目
-2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'Add some amazing feature'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 创建Pull Request
-
-## 许可证
-
-本项目采用MIT许可证 - 详情请参阅LICENSE文件
