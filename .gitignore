@@ -42,3 +42,16 @@ logs/
 data/*
 !data/.gitkeep
 todos.db  # 添加这一行
+
+# 忽略 TodoList.js 文件
+public/js/TodoList/TodoList.js
+
+# 但不忽略其他 TodoList 相关的模块文件
+!public/js/TodoList/api.js
+!public/js/TodoList/auth.js
+!public/js/TodoList/eventListeners.js
+!public/js/TodoList/exportFeatures.js
+!public/js/TodoList/init.js
+!public/js/TodoList/utils.js
+!public/js/TodoList/viewManagement.js
+!public/js/TodoList/index.js
