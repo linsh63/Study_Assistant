@@ -44,7 +44,8 @@ data/*
 todos.db  # 添加这一行
 
 # 忽略 TodoList.js 文件
-public/js/TodoList/TodoList.js
+# 删除或注释掉这一行
+# public/js/TodoList/TodoList.js
 
 # 但不忽略其他 TodoList 相关的模块文件
 !public/js/TodoList/api.js
